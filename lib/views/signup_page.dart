@@ -60,6 +60,7 @@ class SignupPage extends StatelessWidget {
                           color: Colors.black,
                         ),
                       ),
+                      
                       SizedBox(height: 20),
                       Center(
                         child: SizedBox(
@@ -87,7 +88,7 @@ class SignupPage extends StatelessWidget {
                       SizedBox(height: 20),
                       Center(
                         child: GestureDetector(
-                          onTap: () => Navigator.pushNamed(context, '/signup'),
+                          onTap: () => Navigator.pushNamed(context, '/login'),
                           child: Text(
                             "have an account? Login",
                             style: TextStyle(color: primaryColor, fontSize: 14),
@@ -100,7 +101,7 @@ class SignupPage extends StatelessWidget {
                 ),
                 Container(
                   color: Colors.white,
-                  padding: EdgeInsets.only(bottom: 10),
+                  padding: EdgeInsets.only(bottom: 20),
                   child: Center(
                     child: Image.asset(companyLogo, height: 30),
                   ),
