@@ -7,4 +7,6 @@ final Map<String, WidgetBuilder> routes = {
   '/': (context) => LoadingPage(),
   '/login': (context) => LoginPage(),
   '/signup': (context) => SignupPage(),
+  '/passengerRegistration': (context) => PassengerRegistration(),
+
 };
