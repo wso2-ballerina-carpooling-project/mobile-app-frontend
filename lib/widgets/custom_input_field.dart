@@ -12,6 +12,7 @@ class CustomInputField extends StatelessWidget {
     this.obscureText = false,
   });
 
+
   @override
   Widget build(BuildContext context) {
     return Column(
