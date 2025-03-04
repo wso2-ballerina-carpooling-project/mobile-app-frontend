@@ -14,11 +14,11 @@ class LoginPage extends StatelessWidget {
         children: [
           Column(
             children: [
-              SizedBox(height: 80),
+              SizedBox(height: 150),
               Center(
                 child: Container(
-                  width: 200,
-                  height: 200,
+                  width: 150,
+                  height: 150,
                   decoration: BoxDecoration(
                     color: Colors.grey.shade300,
                     borderRadius: BorderRadius.circular(12),
@@ -73,7 +73,7 @@ class LoginPage extends StatelessWidget {
                       onTap: () => Navigator.pushNamed(context, '/signup'),
                       child: Text(
                         "didn't have an account? Register",
-                        style: TextStyle(color: primaryColor, fontSize: 14),
+                        style: TextStyle(color: Colors.blue, fontSize: 14),
                       ),
                     ),
                   ),

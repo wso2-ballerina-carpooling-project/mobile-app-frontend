@@ -4,7 +4,7 @@ class CustomInputField extends StatelessWidget {
   final String hint;
   final bool obscureText;
 
-  CustomInputField({required this.hint, this.obscureText = false});
+  const CustomInputField({super.key, required this.hint, this.obscureText = false});
 
   @override
   Widget build(BuildContext context) {
