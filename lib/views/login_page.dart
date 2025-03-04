@@ -16,10 +16,10 @@ class LoginPage extends StatelessWidget {
             Image.asset(appLogo, height: 100),
             SizedBox(height: 20),
             Text("Welcome back!", style: TextStyle(color: Colors.white, fontSize: 18)),
-            CustomInputField(hint: "Username"),
-            CustomInputField(hint: "Password", obscureText: true),
+            CustomInputField(label: "Username"),
+            CustomInputField(label: "Password", obscureText: true),
             SizedBox(height: 20),
-            CustomButton(text: "Login", onPressed: () {
+            CustomButton(text: "Login",   onPressed: () {
               Navigator.pushNamed(context, '/signup');
             }),
             SizedBox(height: 10),
