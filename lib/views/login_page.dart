@@ -55,9 +55,9 @@ class LoginPage extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 20),
-                  CustomInputField(hint: "Username"),
+                  CustomInputField(label: "Username"),
                   SizedBox(height: 15),
-                  CustomInputField(hint: "Password", obscureText: true),
+                  CustomInputField(label: "Password", obscureText: true),
                   SizedBox(height: 25),
                   Center(
                     child: CustomButton(

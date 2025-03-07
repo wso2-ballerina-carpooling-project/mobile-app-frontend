@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_frontend/views/passenger_registration.dart';
 import 'package:mobile_frontend/views/signup_page.dart';
 import '../views/loading_page.dart';
 import '../views/login_page.dart';

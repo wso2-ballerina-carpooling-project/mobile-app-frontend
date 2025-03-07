@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config/constant.dart';
 import '../widgets/custom_button.dart';
-import '../widgets/custom_input_field.dart';
 
 class SignupPage extends StatelessWidget {
   const SignupPage({super.key});
