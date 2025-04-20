@@ -3,8 +3,23 @@ import '../config/constant.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_input_field.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +51,7 @@ class LoginPage extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+               color: const Color(0xFFF8F8F8),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(30),
                   topRight: Radius.circular(30),
@@ -54,10 +69,35 @@ class LoginPage extends StatelessWidget {
                       color: Colors.black,
                     ),
                   ),
-                  SizedBox(height: 20),
-                  CustomInputField(label: "Username"),
                   SizedBox(height: 15),
-                  CustomInputField(label: "Password", obscureText: true),
+                  CustomInputField(
+                    label: 'Email',
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    hintText: 'username@ws02.com',
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your email';
+                      }
+                      if (!value.contains('@')) {
+                        return 'Please enter a valid email';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 15),
+                  CustomInputField(
+                    label: "Password",
+                    controller: _passwordController,
+                    isPassword: true,
+                    hintText: '****************',
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your password';
+                      }
+                      return null;
+                    },
+                  ),
                   SizedBox(height: 25),
                   Center(
                     child: CustomButton(

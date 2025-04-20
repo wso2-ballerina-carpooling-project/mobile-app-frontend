@@ -83,16 +83,16 @@ class _PassengerRegistrationState extends State<PassengerRegistration> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  const CustomInputField(label: "Name", hint: "John Deo"),
-                  const SizedBox(height: 15),
-                  const CustomInputField(label: "Phone", hint: "+94 11 222 2222"),
-                  const SizedBox(height: 15),
-                  const CustomInputField(label: "Company Email", hint: "johndeo@wso2.lk"),
-                  const SizedBox(height: 15),
-                  const CustomInputField(label: "Password", hint: "***********************"),
-                  const SizedBox(height: 15),
-                  const CustomInputField(label: "Confirm Password", hint: "***********************"),
-                  const SizedBox(height: 10),
+                  // const CustomInputField(label: "Name", hint: "John Deo"),
+                  // const SizedBox(height: 15),
+                  // const CustomInputField(label: "Phone", hint: "+94 11 222 2222"),
+                  // const SizedBox(height: 15),
+                  // const CustomInputField(label: "Company Email", hint: "johndeo@wso2.lk"),
+                  // const SizedBox(height: 15),
+                  // const CustomInputField(label: "Password", hint: "***********************"),
+                  // const SizedBox(height: 15),
+                  // const CustomInputField(label: "Confirm Password", hint: "***********************"),
+                  // const SizedBox(height: 10),
                   
                   // Checkbox Row
                   Row(

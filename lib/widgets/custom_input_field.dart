@@ -2,49 +2,75 @@ import 'package:flutter/material.dart';
 
 class CustomInputField extends StatelessWidget {
   final String label;
-  final String? hint; // Optional placeholder text
-  final bool obscureText;
+  final TextEditingController? controller;
+  final bool isPassword;
+  final String? Function(String?)? validator;
+  final TextInputType keyboardType;
+  final String? hintText;
+  final Widget? suffixIcon;
+  final Function(String)? onChanged;
 
   const CustomInputField({
-    super.key,
+    Key? key,
     required this.label,
-    this.hint,
-    this.obscureText = false,
-  });
-
+    this.controller,
+    this.isPassword = false,
+    this.validator,
+    this.keyboardType = TextInputType.text,
+    this.hintText,
+    this.suffixIcon,
+    this.onChanged,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Label
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w400,
-            color: Colors.black,
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.6),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
-        ),
-        const SizedBox(height: 5),
-
-        // TextField
-        TextField(
-          obscureText: obscureText,
-          decoration: InputDecoration(
-            hintText: hint, // Optional placeholder text
-            hintStyle: TextStyle(color: Colors.grey.shade500),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12), // Rounded corners
-              borderSide: BorderSide.none, // No border
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color.fromARGB(255, 34, 34, 34),
+              ),
             ),
-          ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: controller,
+              obscureText: isPassword,
+              validator: validator,
+              keyboardType: keyboardType,
+              onChanged: onChanged,
+              style: const TextStyle(fontSize: 18),
+              decoration: InputDecoration(
+                hintText: hintText,
+                hintStyle: TextStyle(color: Colors.grey[500]),
+                border: InputBorder.none,
+                suffixIcon: suffixIcon,
+                contentPadding: EdgeInsets.zero,
+                isDense: true,
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
