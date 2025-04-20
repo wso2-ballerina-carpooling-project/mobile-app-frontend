@@ -1,10 +1,12 @@
+
 import 'package:flutter/material.dart';
-import '../config/constant.dart';
-import '../widgets/custom_button.dart';
-import '../widgets/custom_input_field.dart';
+import 'package:mobile_frontend/widgets/custom_input_field.dart';
+import 'package:mobile_frontend/widgets/custom_button.dart';
+
+
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({Key? key}) : super(key: key);
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -13,7 +15,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -24,108 +26,101 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: primaryColor,
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              SizedBox(height: 150),
-              Center(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              flex: 2,
+              child: Center(
                 child: Container(
-                  width: 150,
-                  height: 150,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Text("Logo", style: TextStyle(color: Colors.black, fontSize: 16)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-               color: const Color(0xFFF8F8F8),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    "Welcome back!",
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                  SizedBox(height: 15),
-                  CustomInputField(
-                    label: 'Email',
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    hintText: 'username@ws02.com',
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
-                      }
-                      if (!value.contains('@')) {
-                        return 'Please enter a valid email';
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 15),
-                  CustomInputField(
-                    label: "Password",
-                    controller: _passwordController,
-                    isPassword: true,
-                    hintText: '****************',
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your password';
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 25),
-                  Center(
-                    child: CustomButton(
-                      text: "Login",
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/');
-                      },
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  Center(
-                    child: GestureDetector(
-                      onTap: () => Navigator.pushNamed(context, '/signup'),
-                      child: Text(
-                        "didn't have an account? Register",
-                        style: TextStyle(color: Colors.blue, fontSize: 14),
+                  width: 120,
+                  height: 120,
+                  color: Colors.grey.shade300,
+                  child: const Center(
+                    child: Text(
+                      "LOGO",
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                  SizedBox(height: 40),
-                  Center(
-                    child: Image.asset(companyLogo, height: 30),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ],
+            
+            // White login panel
+            Expanded(
+              flex: 4,
+              child: Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(40),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 20),
+                      const Center(
+                        child: Text(
+                          "Login",
+                          style: TextStyle(
+                            fontSize: 40,
+                            color: Colors.black,
+                            fontWeight: FontWeight.w400,
+                            
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      CustomInputField(
+                        label: "Email",
+                        controller: _emailController,
+                        hintText: "username@ws02.com",
+                        keyboardType: TextInputType.emailAddress,
+                      ),
+                      const SizedBox(height: 16),
+                      CustomInputField(
+                        label: "Password",
+                        controller: _passwordController,
+                        isPassword: true,
+                        hintText: "••••••••••••••••",
+                      ),
+                      const SizedBox(height: 40),
+                      CustomButton(
+                        text: "Login",
+                        onPressed: () {
+                          // Handle login logic
+                        },
+                      ),
+                      const Spacer(),
+                      Center(
+                        child: TextButton(
+                          onPressed: () {
+                            // Navigate to sign up
+                          },
+                          child: const Text(
+                            "Don't have an account? Sign Up here",
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
