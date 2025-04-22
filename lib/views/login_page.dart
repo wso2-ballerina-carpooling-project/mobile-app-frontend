@@ -104,6 +104,7 @@ class _LoginPageState extends State<LoginPage> {
                         child: TextButton(
                           onPressed: () {
                             // Navigate to sign up
+                            Navigator.pushNamed(context, '/signup');
                           },
                           child: const Text(
                             "Don't have an account? Sign Up here",

@@ -25,7 +25,7 @@ class CustomInputField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
@@ -38,8 +38,7 @@ class CustomInputField extends StatelessWidget {
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 14.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
