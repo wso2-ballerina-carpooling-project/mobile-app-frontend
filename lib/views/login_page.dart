@@ -97,6 +97,7 @@ class _LoginPageState extends State<LoginPage> {
                         text: "Login",
                         onPressed: () {
                           // Handle login logic
+                          Navigator.pushNamed(context, '/home');
                         },
                       ),
                       const Spacer(),
