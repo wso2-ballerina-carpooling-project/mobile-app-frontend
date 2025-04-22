@@ -3,6 +3,7 @@ import 'config/routes.dart';
 import 'config/theme.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(MyCarpoolApp());
 }
 

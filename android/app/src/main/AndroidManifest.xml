@@ -2,7 +2,11 @@
     <application
         android:label="mobile_frontend"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:enableOnBackInvokedCallback="true">
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyC8GlueGNwtpZjPUjF6SWnxUHyC5GA82KE"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"
