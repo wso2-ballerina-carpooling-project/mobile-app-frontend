@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_frontend/config/constant.dart';
 
 class CustomButton extends StatelessWidget {
   final String text;
@@ -14,7 +15,7 @@ class CustomButton extends StatelessWidget {
     required this.text,
     required this.onPressed,
     this.textColor = Colors.white,
-    this.backgroundColor = Colors.black,
+    this.backgroundColor = mainButtonColor,
     this.height = 70.0,
     this.width,
     this.padding = const EdgeInsets.symmetric(horizontal: 16.0),

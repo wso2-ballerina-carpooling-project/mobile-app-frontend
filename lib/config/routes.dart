@@ -1,7 +1,10 @@
+
+// lib/config/routes.dart
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/views/example_screen.dart';
 import 'package:mobile_frontend/views/login_page.dart';
 import 'package:mobile_frontend/views/map_sample.dart';
+import 'package:mobile_frontend/views/main_navigation.dart'; // Import the new file
 import '../views/loading_page.dart';
 
 final Map<String, WidgetBuilder> routes = {
@@ -9,5 +12,6 @@ final Map<String, WidgetBuilder> routes = {
   '/login': (context) => LoginPage(),
   '/signup': (context) => ExampleScreen(),
   '/home': (context) => MapSample(),
-
+  // Add the main navigation route
+  '/main': (context) => MainNavigation(),
 };

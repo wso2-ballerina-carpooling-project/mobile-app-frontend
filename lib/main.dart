@@ -1,10 +1,18 @@
+// main.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'config/routes.dart';
 import 'config/theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(MyCarpoolApp());
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+    ),
+  );
+  runApp(const MyCarpoolApp());
 }
 
 class MyCarpoolApp extends StatelessWidget {

@@ -1,9 +1,7 @@
-
 import 'package:flutter/material.dart';
+import 'package:mobile_frontend/config/constant.dart';
 import 'package:mobile_frontend/widgets/custom_input_field.dart';
 import 'package:mobile_frontend/widgets/custom_button.dart';
-
-
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -26,30 +24,25 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: primaryColor,
       body: SafeArea(
         child: Column(
           children: [
+            // Logo section
             Expanded(
               flex: 2,
               child: Center(
                 child: Container(
-                  width: 120,
+                  width: 140,
                   height: 120,
-                  color: Colors.grey.shade300,
-                  child: const Center(
-                    child: Text(
-                      "LOGO",
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                  child: Image.asset(
+                    appLogo, // Using the logo defined in constant.dart
+                    fit: BoxFit.cover, // Adjust the image to fit within the container
                   ),
                 ),
               ),
             ),
-            
+
             // White login panel
             Expanded(
               flex: 4,
@@ -57,9 +50,7 @@ class _LoginPageState extends State<LoginPage> {
                 width: double.infinity,
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(40),
-                  ),
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(40)),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
@@ -74,7 +65,6 @@ class _LoginPageState extends State<LoginPage> {
                             fontSize: 40,
                             color: Colors.black,
                             fontWeight: FontWeight.w400,
-                            
                           ),
                         ),
                       ),
@@ -105,14 +95,11 @@ class _LoginPageState extends State<LoginPage> {
                         child: TextButton(
                           onPressed: () {
                             // Navigate to sign up
-                            Navigator.pushNamed(context, '/signup');
+                            Navigator.pushNamed(context, '/main');
                           },
                           child: const Text(
                             "Don't have an account? Sign Up here",
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 14,
-                            ),
+                            style: TextStyle(color: Colors.black, fontSize: 14),
                           ),
                         ),
                       ),
