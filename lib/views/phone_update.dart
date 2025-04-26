@@ -79,7 +79,6 @@ class _PhoneInputPageState extends State<PhoneInputPage> {
                     color: Colors.white,
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(24.0),
-                      topRight: Radius.circular(24.0),
                     ),
                   ),
                   child: Column(
