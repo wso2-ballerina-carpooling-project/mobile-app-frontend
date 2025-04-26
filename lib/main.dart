@@ -1,23 +1,27 @@
 import 'package:flutter/material.dart';
-import 'config/routes.dart';
-import 'config/theme.dart';
+import '../views/phone_update.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(MyCarpoolApp());
+  runApp(const MyApp());
 }
 
-class MyCarpoolApp extends StatelessWidget {
-  const MyCarpoolApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Carpool App',
+      title: 'Driver Details Update',
       debugShowCheckedModeBanner: false,
-      theme: appTheme,
-      initialRoute: '/',
-      routes: routes,
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: Colors.black,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
+      ),
+      home: const PhoneInputPage(),
     );
   }
 }
