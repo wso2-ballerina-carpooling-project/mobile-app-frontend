@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_frontend/config/constant.dart';
 
 class LoadingPage extends StatelessWidget {
   const LoadingPage({super.key});
@@ -14,11 +15,12 @@ class LoadingPage extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.black, // Top half - black
-              Colors.black, // Keeps it black till 50%
-              Color(0xFF666666), // gray
+              primaryColor,
+              primaryColorWithOpacity,
+              Color.fromARGB(255, 86, 86, 86), // gray
+              Color.fromARGB(255, 116, 116, 116), // Keeps it black till 50%
             ],
-            stops: [0.0, 0.5, 1.0], 
+            stops: [0.0, 0.5,0.75, 1.0], 
           ),
         ),
         child: Padding(
