@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_frontend/widgets/custom_button.dart';
 
 class AccountChangeSuccessScreen extends StatelessWidget {
   const AccountChangeSuccessScreen({Key? key}) : super(key: key);
@@ -12,9 +13,8 @@ class AccountChangeSuccessScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Status bar time and icons would be handled by the system
               const SizedBox(height: 40),
-              
+
               // Success icon
               Container(
                 width: 80,
@@ -29,9 +29,9 @@ class AccountChangeSuccessScreen extends StatelessWidget {
                   size: 50,
                 ),
               ),
-              
+
               const SizedBox(height: 30),
-              
+
               // Success message
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 40),
@@ -45,31 +45,21 @@ class AccountChangeSuccessScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 40),
-              
-              // Back to login button
+
+              // Back to login button using custom button
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: ElevatedButton(
+                child: CustomButton(
+                  text: 'Back to Login',
+                  backgroundColor: const Color(0xFF4CAF50), // Green button
+                  textColor: Colors.white,
+                  //borderRadius: 8.0,
                   onPressed: () {
                     // Navigate back to login screen
                     Navigator.of(context).pushReplacementNamed('/login');
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4CAF50), // Green buttonq
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Back to Login',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
-                  ),
                 ),
               ),
             ],
@@ -79,4 +69,3 @@ class AccountChangeSuccessScreen extends StatelessWidget {
     );
   }
 }
-
