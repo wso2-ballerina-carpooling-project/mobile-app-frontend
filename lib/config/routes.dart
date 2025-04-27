@@ -1,6 +1,7 @@
 
 // lib/config/routes.dart
 import 'package:flutter/material.dart';
+import 'package:mobile_frontend/views/awaiting_verification.dart';
 import 'package:mobile_frontend/views/driver_details.dart';
 import 'package:mobile_frontend/views/login_page.dart';
 import 'package:mobile_frontend/views/map_sample.dart';
@@ -15,6 +16,7 @@ final Map<String, WidgetBuilder> routes = {
   '/signup': (context) => SignUpScreen(),
   '/role': (context) => RoleSelectionScreen(),
   '/driverdetails': (context) => DriverDetailsScreen(),
+  '/waiting': (context) => AwaitingVerificationScreen(),
   '/home': (context) => MapSample(),
   // Add the main navigation route
   '/main': (context) => MainNavigation(),
