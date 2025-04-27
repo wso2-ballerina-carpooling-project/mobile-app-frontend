@@ -85,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
                       CustomButton(
                         text: "Login",
                         onPressed: () {
-                          Navigator.pushNamed(context, '/home');
+                          Navigator.pushNamed(context, '/main');
                         },
                       ),
                       const Spacer(),

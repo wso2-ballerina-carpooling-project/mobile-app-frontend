@@ -7,7 +7,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF0A1339), // Dark navy blue background
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -51,15 +51,15 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
         Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
+          width: 36,
+          height: 36,
+          decoration: const BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.grey[800],
+            color: Colors.white,
           ),
           child: const Icon(
             Icons.add,
-            color: Colors.white,
+            color: Color(0xFF0A1339),
           ),
         ),
       ],
@@ -73,7 +73,7 @@ class HomeScreen extends StatelessWidget {
         const Text(
           "Your routes",
           style: TextStyle(
-            color: Colors.white,
+            color: Colors.black87,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -82,25 +82,36 @@ class HomeScreen extends StatelessWidget {
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.all(20.0),
             child: Column(
               children: [
-                _buildRouteItem(
-                  time: "09:00",
-                  routeCode: "Miriramar",
-                  description: "From Malabe Campus to Town",
-                  isAvailable: false,
+                _buildRouteItemWithTimeline(
+                  time: "08:00",
+                  routeCode: "Moratuwa",
+                  description: "Bandaranayake Road",
+                  subDescription: "1h 10min(est)",
+                  dotColor: Colors.blue,
+                  isFirst: true,
+                  showOrangeIcon: true,
                 ),
-                const Divider(),
-                _buildRouteItem(
-                  time: "10:15",
-                  routeCode: "W02T",
-                  description: "From Malabe Campus to Town",
-                  price: 5.50,
-                  isAvailable: true,
+                _buildRouteItemWithTimeline(
+                  time: "09:10",
+                  routeCode: "WS02",
+                  description: "Bandaranayake Road",
+                  dotColor: Colors.orange,
+                  isLast: true,
+                  showSeats: true,
+                  showPrice: true,
                 ),
               ],
             ),
@@ -110,74 +121,161 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRouteItem({
+  Widget _buildRouteItemWithTimeline({
     required String time,
     required String routeCode,
     required String description,
-    double? price,
-    required bool isAvailable,
+    String? subDescription,
+    required Color dotColor,
+    bool isFirst = false,
+    bool isLast = false,
+    bool showOrangeIcon = false,
+    bool showSeats = false,
+    bool showPrice = false,
   }) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              time,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                routeCode,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[800],
-                ),
-              ),
-            ),
-            Text(
-              description,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
-        const Spacer(),
-        if (price != null)
-          Text(
-            "\$${price.toStringAsFixed(2)}",
+        // Time column
+        SizedBox(
+          width: 60,
+          child: Text(
+            time,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),
           ),
-        const SizedBox(width: 10),
-        if (isAvailable)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.green,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Text(
-              "AVAIL",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
+        ),
+        
+        // Timeline column
+        Column(
+          children: [
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: dotColor,
               ),
             ),
+            if (!isLast)
+              Container(
+                width: 2,
+                height: 50,
+                color: Colors.grey[300],
+              ),
+          ],
+        ),
+        const SizedBox(width: 10),
+        
+        // Content column
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    routeCode,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: isFirst ? Colors.blue : Colors.black,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (showOrangeIcon)
+                    const Icon(
+                      Icons.location_on,
+                      color: Colors.orange,
+                      size: 24,
+                    ),
+                ],
+              ),
+              Text(
+                description,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+              if (subDescription != null)
+                Text(
+                  subDescription,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              if (isLast)
+                const SizedBox(height: 12),
+              if (isLast)
+                Row(
+                  children: [
+                    if (showSeats)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[300]!),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.person_outline, size: 16, color: Colors.grey[600]),
+                            const SizedBox(width: 4),
+                            Text(
+                              "2/4",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(width: 10),
+                    if (showPrice)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          "Rs.1200",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    const Spacer(),
+                    ElevatedButton(
+                      onPressed: () {},
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF375EE0),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        minimumSize: const Size(80, 36),
+                      ),
+                      child: const Text(
+                        "Start",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
           ),
+        ),
       ],
     );
   }
@@ -189,7 +287,7 @@ class HomeScreen extends StatelessWidget {
         const Text(
           "Your last trip",
           style: TextStyle(
-            color: Colors.white,
+            color: Colors.black87,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -198,72 +296,97 @@ class HomeScreen extends StatelessWidget {
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              children: [
-                _buildTripItem(
-                  icon: Icons.home,
-                  title: "Lakewood Residence",
-                  address: "165/AB Main Street, 11/Colombo",
-                ),
-                const SizedBox(height: 15),
-                _buildTripItem(
-                  icon: Icons.location_on,
-                  title: "Marina Mall",
-                  address: "No. 590, Galle Road, Colombo 03",
-                ),
-                const SizedBox(height: 15),
-                _buildTripItem(
-                  icon: Icons.home,
-                  title: "Lakewood Residence",
-                  address: "165/AB Main Street, 11/Colombo",
-                ),
-              ],
-            ),
+          child: Column(
+            children: [
+              _buildLastTripItem(
+                icon: Icons.home_outlined,
+                iconColor: Colors.blue,
+                title: "Lakewood Residence",
+                address: "165/A8 Main Street, 11,Colombo",
+                showDivider: true,
+              ),
+              _buildLastTripItem(
+                icon: Icons.grid_view,
+                iconColor: Colors.black,
+                title: "Marino Mall",
+                address: "No. 590, Galle Road, Colombo 03",
+                showDivider: true,
+              ),
+              _buildLastTripItem(
+                icon: Icons.home_outlined,
+                iconColor: Colors.black,
+                title: "Lakewood Residence",
+                address: "165/A8 Main Street, 11,Colombo",
+                showDivider: false,
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildTripItem({
+  Widget _buildLastTripItem({
     required IconData icon,
+    required Color iconColor,
     required String title,
     required String address,
+    required bool showDivider,
   }) {
-    return Row(
+    return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[300]!),
-            borderRadius: BorderRadius.circular(4),
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 20, color: iconColor),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Text(
+                      address,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          child: Icon(icon, size: 18),
         ),
-        const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-            Text(
-              address,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
+        if (showDivider)
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: Colors.grey[200],
+          ),
       ],
     );
   }
