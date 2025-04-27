@@ -28,7 +28,6 @@ class _LoginPageState extends State<LoginPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // Logo section
             Expanded(
               flex: 2,
               child: Center(
@@ -36,20 +35,19 @@ class _LoginPageState extends State<LoginPage> {
                   width: 140,
                   height: 120,
                   child: Image.asset(
-                    appLogo, // Using the logo defined in constant.dart
-                    fit: BoxFit.cover, // Adjust the image to fit within the container
+                    appLogo, 
+                    fit: BoxFit.cover, 
                   ),
                 ),
               ),
             ),
 
-            // White login panel
             Expanded(
               flex: 4,
               child: Container(
                 width: double.infinity,
                 decoration: const BoxDecoration(
-                  color: Colors.white,
+                  color: bgcolor,
                   borderRadius: BorderRadius.only(topLeft: Radius.circular(40)),
                 ),
                 child: Padding(
@@ -64,7 +62,8 @@ class _LoginPageState extends State<LoginPage> {
                           style: TextStyle(
                             fontSize: 40,
                             color: Colors.black,
-                            fontWeight: FontWeight.w400,
+                            fontWeight: FontWeight.normal,
+                            fontFamily: 'Inter'
                           ),
                         ),
                       ),
@@ -86,20 +85,37 @@ class _LoginPageState extends State<LoginPage> {
                       CustomButton(
                         text: "Login",
                         onPressed: () {
-                          // Handle login logic
                           Navigator.pushNamed(context, '/home');
                         },
                       ),
                       const Spacer(),
                       Center(
-                        child: TextButton(
-                          onPressed: () {
-                            // Navigate to sign up
-                            Navigator.pushNamed(context, '/main');
-                          },
-                          child: const Text(
-                            "Don't have an account? Sign Up here",
-                            style: TextStyle(color: Colors.black, fontSize: 14),
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                "didn't have an account? ",
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.of(context).pushReplacementNamed('/signup');
+                                },
+                                child: const Text(
+                                  'Sign Up here',
+                                  style: TextStyle(
+                                    color: linkColor,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
