@@ -28,7 +28,6 @@ class _LoginPageState extends State<LoginPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // Logo section
             Expanded(
               flex: 2,
               child: Center(
@@ -36,14 +35,13 @@ class _LoginPageState extends State<LoginPage> {
                   width: 140,
                   height: 120,
                   child: Image.asset(
-                    appLogo, // Using the logo defined in constant.dart
-                    fit: BoxFit.cover, // Adjust the image to fit within the container
+                    appLogo, 
+                    fit: BoxFit.cover, 
                   ),
                 ),
               ),
             ),
 
-            // White login panel
             Expanded(
               flex: 4,
               child: Container(
@@ -64,7 +62,8 @@ class _LoginPageState extends State<LoginPage> {
                           style: TextStyle(
                             fontSize: 40,
                             color: Colors.black,
-                            fontWeight: FontWeight.w300,
+                            fontWeight: FontWeight.normal,
+                            fontFamily: 'Inter'
                           ),
                         ),
                       ),
@@ -86,13 +85,10 @@ class _LoginPageState extends State<LoginPage> {
                       CustomButton(
                         text: "Login",
                         onPressed: () {
-                          // Handle login logic
                           Navigator.pushNamed(context, '/home');
                         },
                       ),
-                      // Added Spacer to push content to the bottom
                       const Spacer(),
-                      // Sign-up section (fixed structure)
                       Center(
                         child: Padding(
                           padding: const EdgeInsets.only(bottom: 16.0),
@@ -108,7 +104,6 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               GestureDetector(
                                 onTap: () {
-                                  // Navigate to signup screen
                                   Navigator.of(context).pushReplacementNamed('/signup');
                                 },
                                 child: const Text(

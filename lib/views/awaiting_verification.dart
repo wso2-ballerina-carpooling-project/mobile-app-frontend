@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/config/constant.dart';
-import 'package:mobile_frontend/widgets/custom_button.dart';
 import 'package:mobile_frontend/widgets/custom_button_secound.dart';
 
 class AwaitingVerificationScreen extends StatelessWidget {

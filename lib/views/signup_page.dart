@@ -39,7 +39,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     return Scaffold(
       backgroundColor:
-          primaryColor, // Dark background color from your constants
+          primaryColor, 
       appBar: AppBar(
         backgroundColor: primaryColor,
         elevation: 0,
@@ -64,10 +64,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
             bottom: 0,
             left: 0,
             right: 0,
-            height: screenSize.height * 0.85, // Adjust as needed
+            height: screenSize.height * 0.85, 
             child: Container(
               decoration: const BoxDecoration(
-                color: bgcolor, // Using your bgcolor constant
+                color: bgcolor,
                 borderRadius: BorderRadius.only(topLeft: Radius.circular(40)),
               ),
               child: SingleChildScrollView(
@@ -158,39 +158,34 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       CustomButton(
                         text: 'Sign Up',
                         onPressed: () {
-                          // Implement sign up logic
                            Navigator.of(
                                   context,
                                 ).pushReplacementNamed('/role');
                           if (_agreedToTerms) {
-                            // Proceed with sign up
                           } else {
-                            // Show error for terms agreement
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 backgroundColor:
                                     Colors
-                                        .red, // background color of the SnackBar
+                                        .red,
                                 content: Text(
                                   'Please agree to the terms and conditions',
                                   style: TextStyle(
-                                    color: Colors.white, // text color
-                                    fontSize: 16, // text size
-                                    fontWeight: FontWeight.bold, // text weight
-                                     // custom font (make sure you added it)
+                                    color: Colors.white, 
+                                    fontSize: 16, 
+                                    fontWeight: FontWeight.bold, 
                                   ),
                                 ),
                                 behavior:
                                     SnackBarBehavior
-                                        .floating, // optional: makes it float
+                                        .floating, 
                                 shape: RoundedRectangleBorder(
-                                  // optional: rounded corners
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                elevation: 10, // optional: shadow effect
+                                elevation: 10, 
                                 duration: Duration(
                                   seconds: 3,
-                                ), // how long it shows
+                                ), 
                               ),
                             );
                           }
@@ -212,7 +207,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                             GestureDetector(
                               onTap: () {
-                                // Navigate to login screen
                                 Navigator.of(
                                   context,
                                 ).pushReplacementNamed('/login');
@@ -220,7 +214,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               child: const Text(
                                 'Sign in here',
                                 style: TextStyle(
-                                  color: Color(0xFF5D5FEF),
+                                  color: linkColor,
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                 ),

@@ -27,7 +27,6 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
   // Counter for number of seats
   int _numberOfSeats = 2;
   
-  bool _agreedToTerms = false;
   
   @override
   void dispose() {
@@ -46,7 +45,7 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
     final screenSize = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: primaryColor, // Dark background color
+      backgroundColor: primaryColor,
       body: Stack(
         children: [
           // Back button (top left)
@@ -69,27 +68,25 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
                 width: 100,
                 height: 80,
                 child: Image.asset(
-                  appLogo, // Using the logo defined in constant.dart
-                  fit: BoxFit.contain, // Keep image aspect ratio
+                  appLogo, 
+                  fit: BoxFit.contain, 
                 ),
               ),
             ),
           ),
 
-          // White container at bottom - no fixed height to fit content
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
             child: Container(
               decoration: const BoxDecoration(
-                color: bgcolor, // Your white background color
+                color: bgcolor, 
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(40),
                 ),
               ),
               child: SingleChildScrollView(
-                // Add padding at the bottom for safe area
                 padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
@@ -98,7 +95,6 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
                     children: [
                       const SizedBox(height: 20),
 
-                      // Title with left alignment
                       const Align(
                         alignment: Alignment.centerLeft,
                         child: Text(

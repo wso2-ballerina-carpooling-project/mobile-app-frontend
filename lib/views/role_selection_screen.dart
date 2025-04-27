@@ -15,10 +15,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     final screenSize = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: primaryColor, // Dark background color
+      backgroundColor: primaryColor, 
       body: Stack(
         children: [
-          // Back button (top left)
           Positioned(
             top: 50,
             left: 10,
@@ -28,7 +27,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             ),
           ),
 
-          // Center logo
           Positioned(
             top: screenSize.height * 0.20,
             left: 0,
@@ -38,22 +36,21 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 width: 140,
                 height: 120,
                 child: Image.asset(
-                  appLogo, // Using the logo defined in constant.dart
-                  fit: BoxFit.contain, // Keep image aspect ratio
+                  appLogo, 
+                  fit: BoxFit.contain, 
                 ),
               ),
             ),
           ),
 
-          // White container at bottom
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
-            height: screenSize.height * 0.5, // Adjust the height here
+            height: screenSize.height * 0.5, 
             child: Container(
               decoration: const BoxDecoration(
-                color: bgcolor, // Your white background color
+                color: bgcolor, 
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(40),
                 ),
@@ -65,7 +62,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   children: [
                     const SizedBox(height: 20),
 
-                    // Title "Choose Your Role"
+                  
                     const Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
@@ -93,7 +90,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     CustomButton(
                       text: "Passenger",
                       onPressed: () {
-                        Navigator.pushNamed(context, '/home');
+                        Navigator.pushNamed(context, '/waiting');
                       },
                     ),
                     const Spacer(),
@@ -118,7 +115,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                           child: const Text(
                             'Sign In',
                             style: TextStyle(
-                              color: Color(0xFF5D5FEF),
+                              color: linkColor,
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
                               fontFamily: 'Inter',
