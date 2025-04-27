@@ -11,13 +11,13 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: DriverDetailsPage(),
+      home: DriverProfilePage(),
     );
   }
 }
 
-class DriverDetailsPage extends StatelessWidget {
-  const DriverDetailsPage({super.key});
+class DriverProfilePage extends StatelessWidget {
+  const DriverProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -131,7 +131,7 @@ class DriverDetailsPage extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 10),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
@@ -167,38 +167,7 @@ class DriverDetailsPage extends StatelessWidget {
         ),
       ),
 
-      // Bottom Navigation Bar
-      bottomNavigationBar: Theme(
-        data: Theme.of(context).copyWith(canvasColor: const Color(0xFF0D0C2C)),
-        child: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          currentIndex: 3,
-          selectedItemColor: Colors.grey,
-          unselectedItemColor: Colors.white,
-          selectedFontSize: 0,
-          unselectedFontSize: 0,
-          showSelectedLabels: false,
-          showUnselectedLabels: false,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Center(child: Icon(Icons.home)),
-              label: '',
-            ),
-            BottomNavigationBarItem(
-              icon: Center(child: Icon(Icons.menu)),
-              label: '',
-            ),
-            BottomNavigationBarItem(
-              icon: Center(child: Icon(Icons.notifications)),
-              label: '',
-            ),
-            BottomNavigationBarItem(
-              icon: Center(child: Icon(Icons.person)),
-              label: '',
-            ),
-          ],
-        ),
-      ),
+      
     );
   }
 

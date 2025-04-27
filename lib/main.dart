@@ -25,7 +25,7 @@
 
 
 import 'package:flutter/material.dart';
-import 'package:mobile_frontend/views/driver_details.dart';
+import 'package:mobile_frontend/views/driver_profile.dart';
 
 void main() {
   runApp(MyApp());
@@ -42,7 +42,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const DriverDetailsPage(), // 👈 Set this as the home page
+      home: const DriverProfilePage(), // 👈 Set this as the home page
     );
   }
 }
