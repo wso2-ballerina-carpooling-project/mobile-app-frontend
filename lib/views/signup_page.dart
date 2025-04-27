@@ -1,111 +1,238 @@
 import 'package:flutter/material.dart';
-import '../config/constant.dart';
-import '../widgets/custom_button.dart';
+import 'package:mobile_frontend/config/constant.dart';
+import 'package:mobile_frontend/widgets/custom_button.dart';
+import 'package:mobile_frontend/widgets/custom_input_field.dart';
 
-class SignupPage extends StatelessWidget {
-  const SignupPage({super.key});
+class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({Key? key}) : super(key: key);
+
+  @override
+  State<SignUpScreen> createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends State<SignUpScreen> {
+  // Controllers for form fields
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+
+  bool _agreedToTerms = false;
+
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    double screenHeight = MediaQuery.of(context).size.height;
-    
+    final screenSize = MediaQuery.of(context).size;
+
     return Scaffold(
-      backgroundColor: primaryColor,
+      backgroundColor:
+          primaryColor, // Dark background color from your constants
+      appBar: AppBar(
+        backgroundColor: primaryColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          'Sign Up',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 30,
+            fontWeight: FontWeight.w300,
+          ),
+        ),
+        centerTitle: true,
+      ),
       body: Stack(
         children: [
-          Column(
-            children: [
-              SizedBox(height: 150),
-              Center(
-                child: Container(
-                  width: 150,
-                  height: 150,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Text("Logo", style: TextStyle(color: Colors.black, fontSize: 16)),
-                  ),
-                ),
+          // White container positioned from the bottom
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: screenSize.height * 0.85, // Adjust as needed
+            child: Container(
+              decoration: const BoxDecoration(
+                color: bgcolor, // Using your bgcolor constant
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(40)),
               ),
-            ],
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: double.infinity,
-                  height: screenHeight * 0.45,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
-                    ),
-                  ),
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        "Register as...",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                      // Form fields
+                      CustomInputField(
+                        label: 'First name',
+                        controller: _firstNameController,
+                        hintText: 'John',
+                      ),
+
+                      const SizedBox(height: 10),
+                      CustomInputField(
+                        label: 'Last name',
+                        controller: _lastNameController,
+                        hintText: 'Wick',
+                      ),
+
+                      const SizedBox(height: 10),
+                      CustomInputField(
+                        label: 'Email',
+                        controller: _emailController,
+                        hintText: 'username@web02.com',
+                        keyboardType: TextInputType.emailAddress,
+                      ),
+
+                      const SizedBox(height: 10),
+                      CustomInputField(
+                        label: 'Phone',
+                        controller: _phoneController,
+                        hintText: '071 929 7961',
+                        keyboardType: TextInputType.phone,
+                      ),
+
+                      const SizedBox(height: 10),
+                      CustomInputField(
+                        label: 'Password',
+                        controller: _passwordController,
+                        isPassword: true,
+                        hintText: '••••••••••••••••••',
+                      ),
+
+                      const SizedBox(height: 10),
+                      CustomInputField(
+                        label: 'Confirm password',
+                        controller: _confirmPasswordController,
+                        isPassword: true,
+                        hintText: '••••••••••••••••••',
+                      ),
+
+                      // Terms and conditions checkbox
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                        child: Row(
+                          children: [
+                            Checkbox(
+                              value: _agreedToTerms,
+                              onChanged: (value) {
+                                setState(() {
+                                  _agreedToTerms = value ?? false;
+                                });
+                              },
+                              fillColor: MaterialStateProperty.resolveWith<
+                                Color
+                              >((Set<MaterialState> states) {
+                                if (states.contains(MaterialState.selected)) {
+                                  return Colors.blue;
+                                }
+                                return Colors.grey;
+                              }),
+                            ),
+                            const Text(
+                              'I agree term and condition',
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      
-                      SizedBox(height: 20),
-                      Center(
-                        child: SizedBox(
-                          width: 200,
-                          child: CustomButton(
-                            text: "Passenger",
-                            onPressed: () {
-                              Navigator.pushNamed(context, '/');
-                            },
-                          ),
+
+                      // Sign Up button
+                      CustomButton(
+                        text: 'Sign Up',
+                        onPressed: () {
+                          // Implement sign up logic
+                           Navigator.of(
+                                  context,
+                                ).pushReplacementNamed('/role');
+                          if (_agreedToTerms) {
+                            // Proceed with sign up
+                          } else {
+                            // Show error for terms agreement
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                backgroundColor:
+                                    Colors
+                                        .red, // background color of the SnackBar
+                                content: Text(
+                                  'Please agree to the terms and conditions',
+                                  style: TextStyle(
+                                    color: Colors.white, // text color
+                                    fontSize: 16, // text size
+                                    fontWeight: FontWeight.bold, // text weight
+                                     // custom font (make sure you added it)
+                                  ),
+                                ),
+                                behavior:
+                                    SnackBarBehavior
+                                        .floating, // optional: makes it float
+                                shape: RoundedRectangleBorder(
+                                  // optional: rounded corners
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                elevation: 10, // optional: shadow effect
+                                duration: Duration(
+                                  seconds: 3,
+                                ), // how long it shows
+                              ),
+                            );
+                          }
+                        },
+                      ),
+
+                      // Already have an account link
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'Already have an account? ',
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 14,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                // Navigate to login screen
+                                Navigator.of(
+                                  context,
+                                ).pushReplacementNamed('/login');
+                              },
+                              child: const Text(
+                                'Sign in here',
+                                style: TextStyle(
+                                  color: Color(0xFF5D5FEF),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      SizedBox(height: 20),
-                      Center(
-                        child: SizedBox(
-                          width: 200,
-                          child: CustomButton(
-                            text: "Driver",
-                            onPressed: () {
-                              Navigator.pushNamed(context, '/');
-                            },
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 20),
-                      Center(
-                        child: GestureDetector(
-                          onTap: () => Navigator.pushNamed(context, '/login'),
-                          child: Text(
-                            "have an account? Login",
-                            style: TextStyle(color: primaryColor, fontSize: 14),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 20),
                     ],
                   ),
                 ),
-                Container(
-                  color: Colors.white,
-                  padding: EdgeInsets.only(bottom: 20),
-                  child: Center(
-                    child: Image.asset(companyLogo, height: 30),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ],

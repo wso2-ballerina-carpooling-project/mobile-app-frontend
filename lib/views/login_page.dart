@@ -49,7 +49,7 @@ class _LoginPageState extends State<LoginPage> {
               child: Container(
                 width: double.infinity,
                 decoration: const BoxDecoration(
-                  color: Colors.white,
+                  color: bgcolor,
                   borderRadius: BorderRadius.only(topLeft: Radius.circular(40)),
                 ),
                 child: Padding(
@@ -64,7 +64,7 @@ class _LoginPageState extends State<LoginPage> {
                           style: TextStyle(
                             fontSize: 40,
                             color: Colors.black,
-                            fontWeight: FontWeight.w400,
+                            fontWeight: FontWeight.w300,
                           ),
                         ),
                       ),
@@ -90,16 +90,37 @@ class _LoginPageState extends State<LoginPage> {
                           Navigator.pushNamed(context, '/home');
                         },
                       ),
+                      // Added Spacer to push content to the bottom
                       const Spacer(),
+                      // Sign-up section (fixed structure)
                       Center(
-                        child: TextButton(
-                          onPressed: () {
-                            // Navigate to sign up
-                            Navigator.pushNamed(context, '/main');
-                          },
-                          child: const Text(
-                            "Don't have an account? Sign Up here",
-                            style: TextStyle(color: Colors.black, fontSize: 14),
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                "didn't have an account? ",
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  // Navigate to signup screen
+                                  Navigator.of(context).pushReplacementNamed('/signup');
+                                },
+                                child: const Text(
+                                  'Sign Up here',
+                                  style: TextStyle(
+                                    color: linkColor,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),

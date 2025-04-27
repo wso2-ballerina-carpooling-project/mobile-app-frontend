@@ -28,10 +28,10 @@ class CustomInputField extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.6),
+            color: Colors.grey.withOpacity(0.2),
             spreadRadius: 1,
             blurRadius: 4,
             offset: const Offset(0, 2),
@@ -46,11 +46,11 @@ class CustomInputField extends StatelessWidget {
               label,
               style: const TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Color.fromARGB(255, 34, 34, 34),
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             TextFormField(
               controller: controller,
               obscureText: isPassword,
