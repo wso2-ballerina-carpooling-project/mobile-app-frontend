@@ -7,7 +7,7 @@ class AccountChangeSuccessScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A1029), // Dark blue background
+      backgroundColor: const Color(0xFF003366), // Dark blue background
       body: SafeArea(
         child: Center(
           child: Column(
