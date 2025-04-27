@@ -39,10 +39,10 @@ class CustomButtonSecoundary extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(borderRadius),
-        border: hasBorder ? Border.all(
-          color: borderColor,
-          width: borderWidth,
-        ) : null,
+        border:
+            hasBorder
+                ? Border.all(color: borderColor, width: borderWidth)
+                : null,
       ),
       child: ElevatedButton(
         onPressed: onPressed,
@@ -52,10 +52,10 @@ class CustomButtonSecoundary extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(borderRadius),
           ),
-          side: hasBorder ? BorderSide(
-            color: borderColor,
-            width: borderWidth,
-          ) : BorderSide.none,
+          side:
+              hasBorder
+                  ? BorderSide(color: borderColor, width: borderWidth)
+                  : BorderSide.none,
         ),
         child: Text(
           text,
