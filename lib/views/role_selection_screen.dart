@@ -72,7 +72,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                         "Choose Your Role",
                         style: TextStyle(
                           fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.normal,
                           color: Colors.black87,
                           fontFamily: 'Inter',
                         ),
@@ -84,7 +84,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     CustomButton(
                       text: "Driver",
                       onPressed: () {
-                        Navigator.pushNamed(context, '/home');
+                        Navigator.pushNamed(context, '/driverdetails');
                       },
                     ),
                     const SizedBox(height: 30),

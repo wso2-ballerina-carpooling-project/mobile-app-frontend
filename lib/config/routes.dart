@@ -1,6 +1,7 @@
 
 // lib/config/routes.dart
 import 'package:flutter/material.dart';
+import 'package:mobile_frontend/views/driver_details.dart';
 import 'package:mobile_frontend/views/login_page.dart';
 import 'package:mobile_frontend/views/map_sample.dart';
 import 'package:mobile_frontend/views/main_navigation.dart'; // Import the new file
@@ -13,6 +14,7 @@ final Map<String, WidgetBuilder> routes = {
   '/login': (context) => LoginPage(),
   '/signup': (context) => SignUpScreen(),
   '/role': (context) => RoleSelectionScreen(),
+  '/driverdetails': (context) => DriverDetailsScreen(),
   '/home': (context) => MapSample(),
   // Add the main navigation route
   '/main': (context) => MainNavigation(),
