@@ -44,14 +44,14 @@ class _PhoneInputPageState extends State<PhoneInputPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        color: const Color(0xFF1A1A2E), // Dark navy background color
+        color: const Color(0xFF003366), // Dark navy background color
         child: SafeArea(
           child: Column(
             children: [
               // App bar with back button and title
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                color: const Color(0xFF1A1A2E), // Dark navy color
+                color: const Color(0xFF003366), // Dark navy color
                 child: Row(
                   children: [
                     IconButton(
