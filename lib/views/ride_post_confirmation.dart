@@ -6,7 +6,7 @@ class RidePostConfirmationPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.0xFF0A1029,
+      backgroundColor: Color(0xFF0A1029),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),

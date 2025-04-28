@@ -42,7 +42,7 @@ class CustomButton extends StatelessWidget {
               color: backgroundColor,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(10),
-                topRight: Radius.zero, // No radius on top-right
+                topRight: Radius.circular(10), 
                 bottomRight: Radius.circular(10),
                 bottomLeft: Radius.circular(10),
               ),
