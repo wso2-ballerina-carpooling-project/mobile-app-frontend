@@ -151,9 +151,18 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Horizontally scrollable cards
+                      const Text(
+                        'Your Statistics',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                          color: blackWithOpacity
+                        ),
+                      ),
+                      const SizedBox(height: 20),
                       SizedBox(
-                        height: 150, // Fixed height for the scroll view
+                        
+                        height: 150,
                         child: ListView(
                           scrollDirection: Axis.horizontal,
                           children: [
