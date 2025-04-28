@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_frontend/config/constant.dart';
 
 class LoadingPage extends StatelessWidget {
   const LoadingPage({super.key});
@@ -14,11 +15,12 @@ class LoadingPage extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.black, // Top half - black
-              Colors.black, // Keeps it black till 50%
-              Color(0xFF666666), // gray
+              primaryColor,
+              primaryColorWithOpacity,
+              Color.fromARGB(255, 86, 86, 86), 
+              Color.fromARGB(255, 116, 116, 116), 
             ],
-            stops: [0.0, 0.5, 1.0], 
+            stops: [0.0, 0.5,0.75, 1.0], 
           ),
         ),
         child: Padding(
@@ -41,19 +43,19 @@ class LoadingPage extends StatelessWidget {
                         children: const [
                           TextSpan(
                             text: 'Car ',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: textColor),
                           ),
                           TextSpan(
                             text: 'P',
-                            style: TextStyle(color: Colors.orange),
+                            style: TextStyle(color: companyColor),
                           ),
                           TextSpan(
                             text: 'oo',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: textColor),
                           ),
                           TextSpan(
                             text: 'l',
-                            style: TextStyle(color: Colors.blue),
+                            style: TextStyle(color: mainButtonColor),
                           ),
                         ],
                       ),
@@ -110,14 +112,14 @@ class LoadingPage extends StatelessWidget {
                         "Get Started",
                         style: TextStyle(
                           color: Colors.black,
-                          fontSize: 26,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w400,
                         ),
                       ),
                       SizedBox(width: MediaQuery.of(context).size.width * 0.2),
                       const CircleAvatar(
                         radius: 24,
-                        backgroundColor: Colors.blue,
+                        backgroundColor: mainButtonColor,
                         child: Icon(
                           Icons.arrow_forward,
                           color: Colors.white,

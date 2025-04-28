@@ -1,25 +1,21 @@
 import 'package:flutter/material.dart';
 
-class CustomInputField extends StatelessWidget {
+class CustomDropdownField extends StatelessWidget {
   final String label;
-  final TextEditingController? controller;
-  final bool isPassword;
-  final String? Function(String?)? validator;
-  final TextInputType keyboardType;
+  final List<String> options;
+  final String? value;
+  final Function(String?) onChanged;
   final String? hintText;
   final Widget? suffixIcon;
-  final Function(String)? onChanged;
 
-  const CustomInputField({
+  const CustomDropdownField({
     Key? key,
     required this.label,
-    this.controller,
-    this.isPassword = false,
-    this.validator,
-    this.keyboardType = TextInputType.text,
+    required this.options,
+    required this.onChanged,
+    this.value,
     this.hintText,
     this.suffixIcon,
-    this.onChanged,
   }) : super(key: key);
 
   @override
@@ -38,7 +34,8 @@ class CustomInputField extends StatelessWidget {
           ),
         ],
       ),
-        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 14.0),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 14.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -51,21 +48,26 @@ class CustomInputField extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            TextFormField(
-              controller: controller,
-              obscureText: isPassword,
-              validator: validator,
-              keyboardType: keyboardType,
-              onChanged: onChanged,
-              style: const TextStyle(fontSize: 18),
+            DropdownButtonFormField<String>(
+              value: value,
+              hint: hintText != null ? Text(hintText!, style: TextStyle(color: Colors.grey[500])) : null,
+              style: const TextStyle(fontSize: 18, color: Colors.black87),
               decoration: InputDecoration(
-                hintText: hintText,
-                hintStyle: TextStyle(color: Colors.grey[500]),
                 border: InputBorder.none,
                 suffixIcon: suffixIcon,
                 contentPadding: EdgeInsets.zero,
                 isDense: true,
               ),
+              items: options.map((String option) {
+                return DropdownMenuItem<String>(
+                  value: option,
+                  child: Text(option),
+                );
+              }).toList(),
+              onChanged: onChanged,
+              isExpanded: true,
+              icon: const Icon(Icons.arrow_drop_down),
+              iconSize: 24,
             ),
           ],
         ),

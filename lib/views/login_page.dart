@@ -1,9 +1,7 @@
-
 import 'package:flutter/material.dart';
+import 'package:mobile_frontend/config/constant.dart';
 import 'package:mobile_frontend/widgets/custom_input_field.dart';
 import 'package:mobile_frontend/widgets/custom_button.dart';
-
-
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -26,7 +24,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: primaryColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -34,32 +32,23 @@ class _LoginPageState extends State<LoginPage> {
               flex: 2,
               child: Center(
                 child: Container(
-                  width: 120,
+                  width: 140,
                   height: 120,
-                  color: Colors.grey.shade300,
-                  child: const Center(
-                    child: Text(
-                      "LOGO",
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                  child: Image.asset(
+                    appLogo, 
+                    fit: BoxFit.cover, 
                   ),
                 ),
               ),
             ),
-            
-            // White login panel
+
             Expanded(
               flex: 4,
               child: Container(
                 width: double.infinity,
                 decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(40),
-                  ),
+                  color: bgcolor,
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(40)),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
@@ -73,8 +62,8 @@ class _LoginPageState extends State<LoginPage> {
                           style: TextStyle(
                             fontSize: 40,
                             color: Colors.black,
-                            fontWeight: FontWeight.w400,
-                            
+                            fontWeight: FontWeight.normal,
+                            fontFamily: 'Inter'
                           ),
                         ),
                       ),
@@ -96,23 +85,37 @@ class _LoginPageState extends State<LoginPage> {
                       CustomButton(
                         text: "Login",
                         onPressed: () {
-                          // Handle login logic
-                          Navigator.pushNamed(context, '/home');
+                          Navigator.pushNamed(context, '/main');
                         },
                       ),
                       const Spacer(),
                       Center(
-                        child: TextButton(
-                          onPressed: () {
-                            // Navigate to sign up
-                            Navigator.pushNamed(context, '/signup');
-                          },
-                          child: const Text(
-                            "Don't have an account? Sign Up here",
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 14,
-                            ),
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                "didn't have an account? ",
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.of(context).pushReplacementNamed('/signup');
+                                },
+                                child: const Text(
+                                  'Sign Up here',
+                                  style: TextStyle(
+                                    color: linkColor,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
