@@ -1,6 +1,7 @@
 // lib/views/main_navigation.dart
 import 'package:flutter/material.dart';
-import 'package:mobile_frontend/views/home_screen.dart';
+// import 'package:mobile_frontend/views/home_screen.dart';
+import 'package:mobile_frontend/views/driver/driver_home.dart';
 // Import your actual screen implementations
 
 class MainNavigation extends StatefulWidget {
@@ -15,7 +16,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
   // Replace these with your actual screen implementations
   final List<Widget> _screens = [
-    const HomeScreen(),
+    const DriverHomeScreen(),
     // const ActivitiesScreen(),
     // const NotificationsScreen(),
     // const AccountScreen(),
@@ -69,7 +70,7 @@ class CustomTabBar extends StatelessWidget {
             index: 0,
             icon: Icons.home_outlined,
             selectedIcon: Icons.home,
-            label: 'Home',
+            label: 'Hoome',
           ),
           _buildTabItem(
             index: 1, 
