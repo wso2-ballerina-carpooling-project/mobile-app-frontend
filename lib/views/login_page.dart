@@ -1,91 +1,131 @@
 import 'package:flutter/material.dart';
-import '../config/constant.dart';
-import '../widgets/custom_button.dart';
-import '../widgets/custom_input_field.dart';
+import 'package:mobile_frontend/config/constant.dart';
+import 'package:mobile_frontend/widgets/custom_input_field.dart';
+import 'package:mobile_frontend/widgets/custom_button.dart';
 
-class LoginPage extends StatelessWidget {
-  const LoginPage({super.key});
+class LoginPage extends StatefulWidget {
+  const LoginPage({Key? key}) : super(key: key);
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: primaryColor,
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              SizedBox(height: 150),
-              Center(
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              flex: 2,
+              child: Center(
                 child: Container(
-                  width: 150,
-                  height: 150,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Text("Logo", style: TextStyle(color: Colors.black, fontSize: 16)),
+                  width: 140,
+                  height: 120,
+                  child: Image.asset(
+                    appLogo, 
+                    fit: BoxFit.cover, 
                   ),
                 ),
-              ),
-            ],
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    "Welcome back!",
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  CustomInputField(label: "Username"),
-                  SizedBox(height: 15),
-                  CustomInputField(label: "Password", obscureText: true),
-                  SizedBox(height: 25),
-                  Center(
-                    child: CustomButton(
-                      text: "Login",
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/');
-                      },
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  Center(
-                    child: GestureDetector(
-                      onTap: () => Navigator.pushNamed(context, '/signup'),
-                      child: Text(
-                        "didn't have an account? Register",
-                        style: TextStyle(color: Colors.blue, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 40),
-                  Center(
-                    child: Image.asset(companyLogo, height: 30),
-                  ),
-                ],
               ),
             ),
-          ),
-        ],
+
+            Expanded(
+              flex: 4,
+              child: Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: bgcolor,
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(40)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 20),
+                      const Center(
+                        child: Text(
+                          "Login",
+                          style: TextStyle(
+                            fontSize: 40,
+                            color: Colors.black,
+                            fontWeight: FontWeight.normal,
+                            fontFamily: 'Inter'
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      CustomInputField(
+                        label: "Email",
+                        controller: _emailController,
+                        hintText: "username@ws02.com",
+                        keyboardType: TextInputType.emailAddress,
+                      ),
+                      const SizedBox(height: 16),
+                      CustomInputField(
+                        label: "Password",
+                        controller: _passwordController,
+                        isPassword: true,
+                        hintText: "••••••••••••••••",
+                      ),
+                      const SizedBox(height: 40),
+                      CustomButton(
+                        text: "Login",
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/main');
+                        },
+                      ),
+                      const Spacer(),
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                "didn't have an account? ",
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.of(context).pushReplacementNamed('/signup');
+                                },
+                                child: const Text(
+                                  'Sign Up here',
+                                  style: TextStyle(
+                                    color: linkColor,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
