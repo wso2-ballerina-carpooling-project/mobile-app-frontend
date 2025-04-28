@@ -166,8 +166,6 @@ class DriverProfilePage extends StatelessWidget {
           ),
         ),
       ),
-
-      
     );
   }
 
@@ -181,15 +179,27 @@ class DriverProfilePage extends StatelessWidget {
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side:
-            isRight
-                ? const BorderSide(color: Colors.black, width: 1)
-                : BorderSide.none,
+        side: isRight
+            ? const BorderSide(color: Colors.black, width: 1)
+            : BorderSide.none,
       ),
-      color: isRight ? Colors.white : const Color(0xFF403FCC),
       child: Container(
         width: 160,
         padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: isRight
+              ? null // No gradient for the right-side box
+              : const LinearGradient(
+                  colors: [
+                   Color.fromARGB(255, 1, 44, 87), //  start color
+                  Color.fromARGB(255, 96, 131, 165),  // End color
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+          color: isRight ? Colors.white : null, // Fallback for right-side box
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
