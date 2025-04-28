@@ -22,7 +22,7 @@ class DriverProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0C2C),
+      backgroundColor: const Color(0xFF003366),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
