@@ -13,21 +13,19 @@ void main() {
     ),
   );
   runApp(const MyCarpoolApp());
-
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyCarpoolApp extends StatelessWidget {
+  const MyCarpoolApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter App',
-      debugShowCheckedModeBanner: false, // Optional: hides the debug banner
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const DriverProfilePage(), // 👈 Set this as the home page
+      title: 'Carpool App',
+      debugShowCheckedModeBanner: false,
+      theme: appTheme,
+      initialRoute: '/',
+      routes: routes,
     );
   }
 }

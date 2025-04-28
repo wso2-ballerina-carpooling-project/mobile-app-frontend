@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 // import 'package:mobile_frontend/views/home_screen.dart';
 import 'package:mobile_frontend/views/driver/driver_home.dart';
+import 'package:mobile_frontend/views/driver/driver_profile.dart';
 // Import your actual screen implementations
 
 class MainNavigation extends StatefulWidget {
@@ -19,7 +20,7 @@ class _MainNavigationState extends State<MainNavigation> {
     const DriverHomeScreen(),
     // const ActivitiesScreen(),
     // const NotificationsScreen(),
-    // const AccountScreen(),
+    const DriverProfilePage(),
   ];
 
   @override
@@ -70,7 +71,7 @@ class CustomTabBar extends StatelessWidget {
             index: 0,
             icon: Icons.home_outlined,
             selectedIcon: Icons.home,
-            label: 'Hoome',
+            label: 'Home',
           ),
           _buildTabItem(
             index: 1, 
