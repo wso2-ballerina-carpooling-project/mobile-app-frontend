@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../widgets/custom_button.dart'; // Import the CustomButton widget
+import '../widgets/custom_input_field.dart'; // Import the CustomInputField widget
 
 void main() {
   runApp(const MyApp());
@@ -34,7 +36,7 @@ class _PhoneInputPageState extends State<PhoneInputPage> {
   @override
   void initState() {
     super.initState();
-    // Pre-fill the phone number as shown in the image
+    // Pre-fill the phone number
     _phoneController.text = '071 929 7961';
   }
 
@@ -55,7 +57,7 @@ class _PhoneInputPageState extends State<PhoneInputPage> {
                     IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
                       onPressed: () {
-                        // Handle back button press
+                        Navigator.pop(context); // Handle back button press
                       },
                     ),
                     const SizedBox(width: 8.0),
@@ -70,7 +72,7 @@ class _PhoneInputPageState extends State<PhoneInputPage> {
                   ],
                 ),
               ),
-              
+
               // White content area
               Expanded(
                 child: Container(
@@ -84,7 +86,7 @@ class _PhoneInputPageState extends State<PhoneInputPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Phone input field using your custom component
+                      // Phone input field using CustomInputField
                       CustomInputField(
                         label: 'Phone',
                         controller: _phoneController,
@@ -97,30 +99,30 @@ class _PhoneInputPageState extends State<PhoneInputPage> {
                           return null;
                         },
                       ),
-                      
+
                       // Spacer to push the button to the bottom
                       const Spacer(),
-                      
-                      // Save button
-                      ElevatedButton(
+
+                      // Save button using CustomButton
+                      CustomButton(
+                        text: 'Save',
+                        backgroundColor: const Color(0xFF4CAF50), // Green color
+                        textColor: Colors.white,
+                        height: 50.0,
+                        width: double.infinity,
                         onPressed: () {
                           // Handle save button press
+                          final phoneNumber = _phoneController.text;
+                          if (phoneNumber.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please enter a phone number')),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Phone number saved: $phoneNumber')),
+                            );
+                          }
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4CAF50), // Green color
-                          padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.0),
-                          ),
-                        ),
-                        child: const Text(
-                          'Save',
-                          style: TextStyle(
-                            fontSize: 16.0,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
-                          ),
-                        ),
                       ),
                     ],
                   ),
@@ -132,85 +134,10 @@ class _PhoneInputPageState extends State<PhoneInputPage> {
       ),
     );
   }
-  
+
   @override
   void dispose() {
     _phoneController.dispose();
     super.dispose();
-  }
-}
-
-// Your custom input field component
-class CustomInputField extends StatelessWidget {
-  final String label;
-  final TextEditingController? controller;
-  final bool isPassword;
-  final String? Function(String?)? validator;
-  final TextInputType keyboardType;
-  final String? hintText;
-  final Widget? suffixIcon;
-  final Function(String)? onChanged;
-
-  const CustomInputField({
-    Key? key,
-    required this.label,
-    this.controller,
-    this.isPassword = false,
-    this.validator,
-    this.keyboardType = TextInputType.text,
-    this.hintText,
-    this.suffixIcon,
-    this.onChanged,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.6),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 14.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Color.fromARGB(255, 34, 34, 34),
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: controller,
-              obscureText: isPassword,
-              validator: validator,
-              keyboardType: keyboardType,
-              onChanged: onChanged,
-              style: const TextStyle(fontSize: 18),
-              decoration: InputDecoration(
-                hintText: hintText,
-                hintStyle: TextStyle(color: Colors.grey[500]),
-                border: InputBorder.none,
-                suffixIcon: suffixIcon,
-                contentPadding: EdgeInsets.zero,
-                isDense: true,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
