@@ -4,7 +4,7 @@ import 'package:mobile_frontend/views/home_screen.dart';
 // Import your actual screen implementations
 
 class MainNavigation extends StatefulWidget {
-  const MainNavigation({Key? key}) : super(key: key);
+  const MainNavigation({super.key});
 
   @override
   _MainNavigationState createState() => _MainNavigationState();
@@ -42,10 +42,10 @@ class CustomTabBar extends StatelessWidget {
   final Function(int) onTap;
 
   const CustomTabBar({
-    Key? key,
+    super.key,
     required this.currentIndex,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

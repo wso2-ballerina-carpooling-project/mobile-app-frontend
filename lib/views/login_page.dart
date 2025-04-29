@@ -4,7 +4,7 @@ import 'package:mobile_frontend/widgets/custom_input_field.dart';
 import 'package:mobile_frontend/widgets/custom_button.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({Key? key}) : super(key: key);
+  const LoginPage({super.key});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -31,7 +31,7 @@ class _LoginPageState extends State<LoginPage> {
             Expanded(
               flex: 2,
               child: Center(
-                child: Container(
+                child: SizedBox(
                   width: 140,
                   height: 120,
                   child: Image.asset(

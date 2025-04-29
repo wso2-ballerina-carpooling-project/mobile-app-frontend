@@ -11,7 +11,7 @@ class CustomButton extends StatelessWidget {
   final EdgeInsets padding;
 
   const CustomButton({
-    Key? key,
+    super.key,
     required this.text,
     required this.onPressed,
     this.textColor = Colors.white,
@@ -19,11 +19,11 @@ class CustomButton extends StatelessWidget {
     this.height = 70.0,
     this.width,
     this.padding = const EdgeInsets.symmetric(horizontal: 16.0),
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       height: height,
       width: width,
       child: Material(

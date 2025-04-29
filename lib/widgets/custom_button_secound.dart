@@ -16,7 +16,7 @@ class CustomButtonSecoundary extends StatelessWidget {
   final double borderWidth;
 
   const CustomButtonSecoundary({
-    Key? key,
+    super.key,
     required this.text,
     required this.onPressed,
     this.backgroundColor = Colors.blue,
@@ -30,7 +30,7 @@ class CustomButtonSecoundary extends StatelessWidget {
     this.hasBorder = false,
     this.borderColor = Colors.grey,
     this.borderWidth = 1.0,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

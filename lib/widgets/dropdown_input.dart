@@ -9,14 +9,14 @@ class CustomDropdownField extends StatelessWidget {
   final Widget? suffixIcon;
 
   const CustomDropdownField({
-    Key? key,
+    super.key,
     required this.label,
     required this.options,
     required this.onChanged,
     this.value,
     this.hintText,
     this.suffixIcon,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
