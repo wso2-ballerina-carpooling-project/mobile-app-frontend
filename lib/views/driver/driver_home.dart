@@ -86,7 +86,7 @@ class DriverHomeScreen extends StatelessWidget {
                         seatInfo: "2/4",
                         price: "Rs.1200",
                         onStartPressed: () {
-                          print("Start button pressed!");
+                          Navigator.of(context).pushReplacementNamed('/rideStart');
                         },
                       ),
                       const SizedBox(height: 30),
@@ -116,8 +116,7 @@ class DriverHomeScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-      
+      ), 
     );
   }
 }

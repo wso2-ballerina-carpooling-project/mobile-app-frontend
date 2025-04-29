@@ -5,6 +5,8 @@ class LastTripItem extends StatelessWidget {
   final LastTrip trip;
   const LastTripItem({super.key, required this.trip});
 
+  
+
   @override
   Widget build(BuildContext context) {
     return Column(
