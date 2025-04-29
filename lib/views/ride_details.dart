@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_frontend/widgets/custom_button.dart';
-import 'map_sample.dart'; // Your existing map widget
+import '../widgets/custom_button.dart';
+import 'map_sample.dart'; 
 
 class RideDetailsScreen extends StatefulWidget {
   const RideDetailsScreen({Key? key}) : super(key: key);
