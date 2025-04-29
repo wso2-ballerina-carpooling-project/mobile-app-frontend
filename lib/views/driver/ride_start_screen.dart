@@ -19,6 +19,7 @@ class _RideStartScreenState extends State<RideStartScreen> {
   Position? currentPositionOfUser;
   Set<Marker> markersSet = {};
   Set<Polyline> polylineSet = {};
+  bool showPickupDialog = false;
 
   // Ride details
   final String driverName = "John Wick";
@@ -27,6 +28,10 @@ class _RideStartScreenState extends State<RideStartScreen> {
   final int afterNextStopMinutes = 20;
   final String currentLocation = "Dissanayake Mawatha, Moratuwa";
   final String destinationLocation = "Bandaranayake Mawatha, Katubedda";
+  final String passengerName = "Nalaka Dinesh"; // Added from the mockup
+
+  // Location thresholds for triggering the popup
+  final double arrivalThresholdMeters = 10.0; // Trigger popup when within this distance from pickup
 
   static const CameraPosition _initialCameraPosition = CameraPosition(
     target: LatLng(6.8015, 79.9226), // Sri Lanka area as shown in screenshot
@@ -59,6 +64,159 @@ class _RideStartScreenState extends State<RideStartScreen> {
       );
       return;
     }
+
+    // Start a periodic location check to simulate driver arriving at pickup
+    Timer.periodic(const Duration(seconds: 5), (timer) {
+      _checkIfArrivedAtPickup();
+    });
+  }
+
+  Future<void> _checkIfArrivedAtPickup() async {
+    try {
+      // Get current position
+      Position userPosition = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      
+      // Get pickup location (for demonstration, we're using the marker position)
+      LatLng pickupPosition = LatLng(userPosition.latitude, userPosition.longitude);
+      
+      // In a real app, you would compare the current position to the actual pickup location
+      // For demonstration, we'll simulate arrival after a delay
+      if (!showPickupDialog) {
+        // Simulate arrival after 3 seconds for demonstration
+        Future.delayed(const Duration(seconds: 3), () {
+          setState(() {
+            showPickupDialog = true;
+          });
+          _showPickupDialog();
+        });
+      }
+      
+      // In a real implementation, you would calculate the distance and check if it's below threshold:
+      /*
+      double distanceToPickup = Geolocator.distanceBetween(
+        userPosition.latitude,
+        userPosition.longitude,
+        pickupPosition.latitude,
+        pickupPosition.longitude
+      );
+      
+      if (distanceToPickup <= arrivalThresholdMeters && !showPickupDialog) {
+        setState(() {
+          showPickupDialog = true;
+        });
+        _showPickupDialog();
+      }
+      */
+    } catch (e) {
+      debugPrint('Error checking arrival: $e');
+    }
+  }
+
+  void _showPickupDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20.0),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'You arrived to pickup location',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Passenger Details',
+                  style: TextStyle(
+                    color: Colors.black54,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 15),
+                CircleAvatar(
+                  radius: 40,
+                  backgroundColor: Colors.grey[200],
+                  backgroundImage: const NetworkImage(
+                    'https://via.placeholder.com/150', // Replace with actual passenger image
+                  ),
+                ),
+                const SizedBox(height: 15),
+                Text(
+                  passengerName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.phone, color: Colors.black),
+                        onPressed: () {
+                          // Implement call functionality
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    // Implement pickup confirmation logic
+                  },
+                  child: const Text(
+                    'Picked',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> getCurrentLiveLocationOfUser() async {
