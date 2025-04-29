@@ -33,7 +33,6 @@ Future<void> requestLocationPermission() async {
     await openAppSettings();
   }
 
-  // You can check: status.isGranted to take further action if needed
 }
 
 class MyCarpoolApp extends StatelessWidget {

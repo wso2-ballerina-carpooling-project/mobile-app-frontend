@@ -64,7 +64,7 @@ class _RideStartScreenState extends State<RideStartScreen> {
   Future<void> getCurrentLiveLocationOfUser() async {
     try {
       Position positionOfUser = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.bestForNavigation,
+        desiredAccuracy: LocationAccuracy.high,
       );
       currentPositionOfUser = positionOfUser;
       LatLng positionOfUserInLatLan = LatLng(
