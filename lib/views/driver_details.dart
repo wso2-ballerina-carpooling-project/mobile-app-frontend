@@ -5,7 +5,7 @@ import 'package:mobile_frontend/widgets/custom_input_field.dart';
 import 'package:mobile_frontend/widgets/dropdown_input.dart';
 
 class DriverDetailsScreen extends StatefulWidget {
-  const DriverDetailsScreen({Key? key}) : super(key: key);
+  const DriverDetailsScreen({super.key});
 
   @override
   State<DriverDetailsScreen> createState() => _DriverDetailsScreenState();
