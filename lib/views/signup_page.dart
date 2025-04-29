@@ -4,7 +4,7 @@ import 'package:mobile_frontend/widgets/custom_button.dart';
 import 'package:mobile_frontend/widgets/custom_input_field.dart';
 
 class SignUpScreen extends StatefulWidget {
-  const SignUpScreen({Key? key}) : super(key: key);
+  const SignUpScreen({super.key});
 
   @override
   State<SignUpScreen> createState() => _SignUpScreenState();
@@ -134,10 +134,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   _agreedToTerms = value ?? false;
                                 });
                               },
-                              fillColor: MaterialStateProperty.resolveWith<
+                              fillColor: WidgetStateProperty.resolveWith<
                                 Color
-                              >((Set<MaterialState> states) {
-                                if (states.contains(MaterialState.selected)) {
+                              >((Set<WidgetState> states) {
+                                if (states.contains(WidgetState.selected)) {
                                   return Colors.blue;
                                 }
                                 return Colors.grey;

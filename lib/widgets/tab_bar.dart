@@ -1,45 +1,4 @@
-// lib/views/main_navigation.dart
 import 'package:flutter/material.dart';
-import 'package:mobile_frontend/views/activities_page.dart';
-// import 'package:mobile_frontend/views/home_screen.dart';
-import 'package:mobile_frontend/views/driver/driver_home.dart';
-import 'package:mobile_frontend/views/driver/driver_profile.dart';
-import 'package:mobile_frontend/views/notification_page.dart';
-// Import your actual screen implementations
-
-class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key});
-
-  @override
-  _MainNavigationState createState() => _MainNavigationState();
-}
-
-class _MainNavigationState extends State<MainNavigation> {
-  int _currentIndex = 0;
-
-  // Replace these with your actual screen implementations
-  final List<Widget> _screens = [
-    const DriverHomeScreen(),
-    const ActivitiesScreen(),
-    const NotificationsScreen(),
-    const DriverProfilePage(),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: _screens[_currentIndex],
-      bottomNavigationBar: CustomTabBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-      ),
-    );
-  }
-}
 
 class CustomTabBar extends StatelessWidget {
   final int currentIndex;
@@ -56,7 +15,7 @@ class CustomTabBar extends StatelessWidget {
     return Container(
       height: 70,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.black,
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.2),
@@ -72,7 +31,7 @@ class CustomTabBar extends StatelessWidget {
           _buildTabItem(
             index: 0,
             icon: Icons.home_outlined,
-            selectedIcon: Icons.home,
+            selectedIcon: Icons.home_filled,
             label: 'Home',
           ),
           _buildTabItem(
@@ -114,7 +73,7 @@ class CustomTabBar extends StatelessWidget {
           Icon(
             isSelected ? selectedIcon : icon,
             color: isSelected ? const Color(0xFF1A2B47) : Colors.grey,
-            size: 24,
+            size: 34,
           ),
           const SizedBox(height: 4),
           Text(

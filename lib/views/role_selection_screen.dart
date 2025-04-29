@@ -3,7 +3,7 @@ import 'package:mobile_frontend/config/constant.dart';
 import 'package:mobile_frontend/widgets/custom_button.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
-  const RoleSelectionScreen({Key? key}) : super(key: key);
+  const RoleSelectionScreen({super.key});
 
   @override
   State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();

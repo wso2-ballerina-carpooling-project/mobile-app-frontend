@@ -15,7 +15,7 @@ class LoadingPage extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              primaryColor,
+              Color.fromRGBO(10, 14, 42, 1),
               primaryColorWithOpacity,
               Color.fromARGB(255, 86, 86, 86), 
               Color.fromARGB(255, 116, 116, 116), 
