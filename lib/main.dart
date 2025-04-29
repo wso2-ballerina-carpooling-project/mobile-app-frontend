@@ -1,18 +1,39 @@
-// main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'config/routes.dart';
 import 'config/theme.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Set status bar style
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
     ),
   );
+
+  // Request location permission before launching app
+  await requestLocationPermission();
+
   runApp(const MyCarpoolApp());
+}
+
+Future<void> requestLocationPermission() async {
+  var status = await Permission.location.status;
+
+  if (status.isDenied || status.isRestricted) {
+    status = await Permission.location.request();
+  }
+
+  if (status.isPermanentlyDenied) {
+    // Open app settings if user blocked it forever
+    await openAppSettings();
+  }
+
+  // You can check: status.isGranted to take further action if needed
 }
 
 class MyCarpoolApp extends StatelessWidget {
