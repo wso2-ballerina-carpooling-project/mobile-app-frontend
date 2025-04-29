@@ -13,35 +13,30 @@ class NotificationsScreen extends StatelessWidget {
         message: "John Smith wants to join your ride to Town",
         time: "2 minutes ago",
         isRead: false,
-        icon: Icons.person_add,
       ),
       NotificationItem(
         title: "Ride confirmed",
         message: "Your ride to Marina Mall has been confirmed",
         time: "25 minutes ago",
         isRead: false,
-        icon: Icons.check_circle,
       ),
       NotificationItem(
         title: "Payment received",
         message: "You received \$5.50 for your recent ride",
         time: "Yesterday",
         isRead: true,
-        icon: Icons.attach_money,
       ),
       NotificationItem(
         title: "Ride canceled",
         message: "Your scheduled ride to Downtown was canceled",
         time: "2 days ago",
         isRead: true,
-        icon: Icons.cancel,
       ),
       NotificationItem(
         title: "Rate your driver",
         message: "How was your ride with Alex? Please rate your experience",
         time: "3 days ago",
         isRead: true,
-        icon: Icons.star_border,
       ),
     ];
 
@@ -88,12 +83,7 @@ class NotificationsScreen extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            onPressed: () {
-              // Add notification settings action here
-            },
-          ),
+          
         ],
       ),
     );
@@ -203,11 +193,7 @@ class NotificationListItem extends StatelessWidget {
                   color: notification.isRead ? Colors.grey[200] : Colors.blue[100],
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  notification.icon,
-                  color: notification.isRead ? Colors.grey[600] : Colors.blue[700],
-                  size: 20,
-                ),
+                
               ),
               const SizedBox(width: 12),
               Expanded(

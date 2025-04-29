@@ -15,7 +15,7 @@ import '../views/loading_page.dart';
 
 final Map<String, WidgetBuilder> routes = {
   '/': (context) => LoadingPage(),
-  '/login': (context) => ActivitiesScreen(),
+  '/login': (context) => LoginPage(),
   '/signup': (context) => SignUpScreen(),
   '/role': (context) => RoleSelectionScreen(),
   '/driverdetails': (context) => DriverDetailsScreen(),

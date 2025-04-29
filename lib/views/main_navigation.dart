@@ -1,8 +1,10 @@
 // lib/views/main_navigation.dart
 import 'package:flutter/material.dart';
+import 'package:mobile_frontend/views/activities_page.dart';
 // import 'package:mobile_frontend/views/home_screen.dart';
 import 'package:mobile_frontend/views/driver/driver_home.dart';
 import 'package:mobile_frontend/views/driver/driver_profile.dart';
+import 'package:mobile_frontend/views/notification_page.dart';
 // Import your actual screen implementations
 
 class MainNavigation extends StatefulWidget {
@@ -18,8 +20,8 @@ class _MainNavigationState extends State<MainNavigation> {
   // Replace these with your actual screen implementations
   final List<Widget> _screens = [
     const DriverHomeScreen(),
-    // const ActivitiesScreen(),
-    // const NotificationsScreen(),
+    const ActivitiesScreen(),
+    const NotificationsScreen(),
     const DriverProfilePage(),
   ];
 
