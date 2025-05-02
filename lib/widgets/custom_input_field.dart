@@ -11,7 +11,7 @@ class CustomInputField extends StatelessWidget {
   final Function(String)? onChanged;
 
   const CustomInputField({
-    Key? key,
+    super.key,
     required this.label,
     this.controller,
     this.isPassword = false,
@@ -20,7 +20,7 @@ class CustomInputField extends StatelessWidget {
     this.hintText,
     this.suffixIcon,
     this.onChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
