@@ -17,7 +17,8 @@ class RideCancellationApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         scaffoldBackgroundColor: Colors.white,
       ),
-      home: const RideCancellationPage(), // Set RideCancellationPage as the home page
+      home:
+          const RideCancellationPage(), // Set RideCancellationPage as the home page
     );
   }
 }
