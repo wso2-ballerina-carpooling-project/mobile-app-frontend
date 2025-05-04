@@ -3,7 +3,7 @@ import 'package:mobile_frontend/widgets/custom_button.dart';
 import 'package:mobile_frontend/widgets/custom_input_field.dart';
 
 class SignUpPage extends StatefulWidget {
-  const SignUpPage({Key? key}) : super(key: key);
+  const SignUpPage({super.key});
 
   @override
   State<SignUpPage> createState() => _SignUpPageState();

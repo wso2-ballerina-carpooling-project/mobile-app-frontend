@@ -1,23 +1,40 @@
 import 'package:flutter/material.dart';
-import 'config/routes.dart';
-import 'config/theme.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(MyCarpoolApp());
+  runApp(const MyApp());
 }
 
-class MyCarpoolApp extends StatelessWidget {
-  const MyCarpoolApp({super.key});
+// A placeholder widget for MyRoutePage
+class MyRoutePage extends StatelessWidget {
+  const MyRoutePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Route Page'),
+      ),
+      body: const Center(
+        child: Text('Welcome to My Route Page!'),
+      ),
+    );
+  }
+}
+
+// Root widget of the application
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Carpool App',
-      debugShowCheckedModeBanner: false,
-      theme: appTheme,
-      initialRoute: '/',
-      routes: routes,
+      title: 'My Route App',
+      debugShowCheckedModeBanner: false, // Hides debug banner
+      theme: ThemeData(
+        primarySwatch: Colors.indigo,
+        fontFamily: 'Roboto', // Optional: Set your font
+      ),
+      home: const MyRoutePage(), // Set our custom UI as the home screen
     );
   }
 }

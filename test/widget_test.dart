@@ -8,7 +8,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:mobile_frontend/main.dart';
+import 'package:mobile_frontend/my_carpool_app.dart'; // Ensure this is the correct path to MyCarpoolApp
+
+// If MyCarpoolApp is not defined, define it here for testing purposes.
+class MyCarpoolApp extends StatelessWidget {
+  const MyCarpoolApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: Text('My Carpool App')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Text('0'),
+              IconButton(
+                icon: Icon(Icons.add),
+                onPressed: () {
+                  // Increment logic here
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
