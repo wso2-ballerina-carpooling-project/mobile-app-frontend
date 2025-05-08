@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_frontend/config/constant.dart';
 
 class ActivitiesScreen extends StatefulWidget {
   const ActivitiesScreen({super.key});
@@ -25,7 +26,7 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color.fromRGBO(10, 14, 42, 1),
+      backgroundColor: primaryColor,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -37,7 +38,7 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> with SingleTickerPr
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: TabBar(
                 controller: _tabController,
-                indicatorColor: Colors.orange,
+                indicatorColor: companyColor,
                 indicatorWeight: 3.0,
                 labelColor: Colors.white,
                 unselectedLabelColor: Colors.grey,
@@ -57,7 +58,7 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> with SingleTickerPr
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(30),
+                    topLeft: Radius.circular(40),
                   ),
                 ),
                 child: TabBarView(

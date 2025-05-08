@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/notification_item.dart';
+import 'package:mobile_frontend/config/constant.dart';
+import '../../models/notification_item.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -41,7 +42,7 @@ class NotificationsScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      backgroundColor: const Color.fromRGBO(10, 14, 42, 1),
+      backgroundColor: primaryColor,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -55,7 +56,7 @@ class NotificationsScreen extends StatelessWidget {
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(30),
+                    topLeft: Radius.circular(40),
                   ),
                 ),
                 child: notifications.isEmpty
@@ -71,7 +72,7 @@ class NotificationsScreen extends StatelessWidget {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 16.0, bottom: 8.0),
+      padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 25.0, bottom: 16.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
