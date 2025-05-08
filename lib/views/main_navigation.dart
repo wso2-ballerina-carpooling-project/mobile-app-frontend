@@ -1,14 +1,23 @@
 // lib/views/main_navigation.dart
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/views/activities_page.dart';
-// import 'package:mobile_frontend/views/home_screen.dart';
 import 'package:mobile_frontend/views/driver/driver_home.dart';
 import 'package:mobile_frontend/views/driver/driver_profile.dart';
 import 'package:mobile_frontend/views/notification_page.dart';
-// Import your actual screen implementations
+import 'package:mobile_frontend/views/passenger/passenger_home.dart';
+
+enum UserRole {
+  driver,
+  passenger,
+}
 
 class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key});
+  final UserRole userRole;
+
+  const MainNavigation({
+    super.key,
+    required this.userRole,
+  });
 
   @override
   _MainNavigationState createState() => _MainNavigationState();
@@ -17,13 +26,32 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
 
-  // Replace these with your actual screen implementations
-  final List<Widget> _screens = [
-    const DriverHomeScreen(),
-    const ActivitiesScreen(),
-    const NotificationsScreen(),
-    const DriverProfilePage(),
-  ];
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize screens based on user role
+    _initScreens();
+  }
+
+  void _initScreens() {
+    if (widget.userRole == UserRole.driver) {
+      _screens = [
+        const DriverHomeScreen(),
+        const ActivitiesScreen(),
+        const NotificationsScreen(),
+        const DriverProfilePage(),
+      ];
+    } else {
+      _screens = [
+        const PassengerHome(),
+        const ActivitiesScreen(),
+        const NotificationsScreen(),
+        const DriverProfilePage(),
+      ];
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +64,7 @@ class _MainNavigationState extends State<MainNavigation> {
             _currentIndex = index;
           });
         },
+        userRole: widget.userRole,
       ),
     );
   }
@@ -44,15 +73,21 @@ class _MainNavigationState extends State<MainNavigation> {
 class CustomTabBar extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
+  final UserRole userRole;
 
   const CustomTabBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
+    required this.userRole,
   });
 
   @override
   Widget build(BuildContext context) {
+    // You can also customize the tab bar based on user role if needed
+    final String homeLabel = userRole == UserRole.driver ? 'Driver Home' : 'Home';
+    final String profileLabel = userRole == UserRole.driver ? 'Driver Profile' : 'My Profile';
+
     return Container(
       height: 70,
       decoration: BoxDecoration(
@@ -73,10 +108,10 @@ class CustomTabBar extends StatelessWidget {
             index: 0,
             icon: Icons.home_outlined,
             selectedIcon: Icons.home,
-            label: 'Home',
+            label: homeLabel,
           ),
           _buildTabItem(
-            index: 1, 
+            index: 1,
             icon: Icons.list_alt_outlined,
             selectedIcon: Icons.list_alt,
             label: 'Activities',
@@ -91,7 +126,7 @@ class CustomTabBar extends StatelessWidget {
             index: 3,
             icon: Icons.person_outline,
             selectedIcon: Icons.person,
-            label: 'Account',
+            label: profileLabel,
           ),
         ],
       ),
@@ -105,7 +140,7 @@ class CustomTabBar extends StatelessWidget {
     required String label,
   }) {
     final isSelected = index == currentIndex;
-    
+
     return InkWell(
       onTap: () => onTap(index),
       child: Column(

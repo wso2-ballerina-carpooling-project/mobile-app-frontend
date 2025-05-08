@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/config/constant.dart';
+import 'package:mobile_frontend/views/main_navigation.dart';
 import 'package:mobile_frontend/widgets/custom_input_field.dart';
 import 'package:mobile_frontend/widgets/custom_button.dart';
 
@@ -34,10 +35,7 @@ class _LoginPageState extends State<LoginPage> {
                 child: SizedBox(
                   width: 140,
                   height: 120,
-                  child: Image.asset(
-                    appLogo, 
-                    fit: BoxFit.cover, 
-                  ),
+                  child: Image.asset(appLogo, fit: BoxFit.cover),
                 ),
               ),
             ),
@@ -63,7 +61,7 @@ class _LoginPageState extends State<LoginPage> {
                             fontSize: 40,
                             color: Colors.black,
                             fontWeight: FontWeight.normal,
-                            fontFamily: 'Inter'
+                            fontFamily: 'Inter',
                           ),
                         ),
                       ),
@@ -85,7 +83,15 @@ class _LoginPageState extends State<LoginPage> {
                       CustomButton(
                         text: "Login",
                         onPressed: () {
-                          Navigator.pushNamed(context, '/main');
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => const MainNavigation(
+                                    userRole: UserRole.passenger,
+                                  ),
+                            ),
+                          );
                         },
                       ),
                       const Spacer(),
@@ -104,7 +110,9 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               GestureDetector(
                                 onTap: () {
-                                  Navigator.of(context).pushReplacementNamed('/signup');
+                                  Navigator.of(
+                                    context,
+                                  ).pushReplacementNamed('/signup');
                                 },
                                 child: const Text(
                                   'Sign Up here',

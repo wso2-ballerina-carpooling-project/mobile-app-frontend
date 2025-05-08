@@ -7,7 +7,6 @@ import 'config/theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Set status bar style
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -15,7 +14,6 @@ void main() async {
     ),
   );
 
-  // Request location permission before launching app
   await requestLocationPermission();
 
   runApp(const MyCarpoolApp());

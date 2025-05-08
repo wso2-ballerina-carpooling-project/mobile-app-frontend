@@ -39,7 +39,6 @@ dependencies:
   geolocator: 
   image_picker: ^0.8.6
   permission_handler: ^11.0.0
-  google_maps_webservice: ^0.0.20-nullsafety.7 # For directions API
   flutter_polyline_points: ^1.0.0 # To decode polylines
 
 dev_dependencies:

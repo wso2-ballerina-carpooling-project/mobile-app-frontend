@@ -23,5 +23,5 @@ final Map<String, WidgetBuilder> routes = {
   '/rideStart': (context) => RideStartScreen(),
   '/phoneEdit': (context) => PhoneInputPage(),
   // Add the main navigation route
-  '/main': (context) => MainNavigation(),
+  // '/main': (context) => MainNavigation(),
 };
