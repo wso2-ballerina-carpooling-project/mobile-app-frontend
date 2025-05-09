@@ -1,6 +1,80 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:mobile_frontend/config/theme.dart';
+import 'package:mobile_frontend/views/find_a_ride_screen.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+    ),
+  );
+
+  await requestLocationPermission();
+
+  runApp(const MyCarpoolApp());
+}
+
+class MyCarpoolApp extends StatelessWidget {
+  const MyCarpoolApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Carpool App',
+      debugShowCheckedModeBanner: false,
+      theme: appTheme,
+      home: const HomeScreen(),
+    );
+  }
+}
+
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Carpool App')),
+      body: Center(
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+          ),
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const FindARideScreen(),
+              ),
+            );
+          },
+          child: const Text('Find a Ride'),
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> requestLocationPermission() async {
+  var status = await Permission.location.status;
+  if (status.isDenied || status.isRestricted) {
+    status = await Permission.location.request();
+    if (status.isPermanentlyDenied) {
+      await openAppSettings();
+    }
+  }
+}
+
+
+
+/*
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'config/routes.dart';
 import 'config/theme.dart';
 
@@ -47,3 +121,5 @@ class MyCarpoolApp extends StatelessWidget {
     );
   }
 }
+
+*/

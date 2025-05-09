@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mobile_frontend/widgets/custom_input_field.dart';
 import 'package:mobile_frontend/widgets/custom_button.dart';
 import 'package:mobile_frontend/widgets/dropdown_input.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'select_location.dart';
 
 class FindARideScreen extends StatefulWidget {
   const FindARideScreen({Key? key}) : super(key: key);
@@ -11,13 +13,21 @@ class FindARideScreen extends StatefulWidget {
 }
 
 class _FindARideScreenState extends State<FindARideScreen> {
+  static const LatLng wso2Location = LatLng(
+    6.896169826136759,
+    79.85657776071614,
+  );
+  static const String wso2Address = "WSO2 Office";
+
   String? selectedTime;
   final TextEditingController pickUpController = TextEditingController();
   final TextEditingController dropOffController = TextEditingController();
   final TextEditingController dateController = TextEditingController();
-  final _formKey = GlobalKey<FormState>(); // Form key for validation
+  final _formKey = GlobalKey<FormState>();
 
-  // Generate times like 00:00:00, 00:15:00, 00:30:00, ..., 23:45:00
+  LatLng? selectedPickupLocation;
+  LatLng? selectedDropoffLocation;
+
   List<String> generateTimes() {
     List<String> times = [];
     for (int hour = 0; hour < 24; hour++) {
@@ -30,9 +40,45 @@ class _FindARideScreenState extends State<FindARideScreen> {
     return times;
   }
 
+  Future<void> _selectLocation(BuildContext context, bool isPickup) async {
+    final selectedLocation = await Navigator.push<LatLng>(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => SelectLocation(
+              initialLocation:
+                  isPickup ? selectedPickupLocation : selectedDropoffLocation,
+            ),
+      ),
+    );
+
+    if (selectedLocation != null) {
+      setState(() {
+        if (isPickup) {
+          selectedPickupLocation = selectedLocation;
+          pickUpController.text =
+              _isWSO2Location(selectedLocation)
+                  ? wso2Address
+                  : "Selected Location";
+        } else {
+          selectedDropoffLocation = selectedLocation;
+          dropOffController.text =
+              _isWSO2Location(selectedLocation)
+                  ? wso2Address
+                  : "Selected Location";
+        }
+      });
+    }
+  }
+
+  bool _isWSO2Location(LatLng location) {
+    // Simple distance check - in a real app you might want a more precise check
+    return (location.latitude - wso2Location.latitude).abs() < 0.0001 &&
+        (location.longitude - wso2Location.longitude).abs() < 0.0001;
+  }
+
   @override
   void dispose() {
-    // Dispose controllers to release resources
     pickUpController.dispose();
     dropOffController.dispose();
     dateController.dispose();
@@ -44,28 +90,32 @@ class _FindARideScreenState extends State<FindARideScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0E2A),
       body: SafeArea(
-        child: Form( // Wrap the form elements inside a Form widget
-          key: _formKey, // Assign the form key for validation
+        child: Form(
+          key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Back arrow and title
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 20,
+                ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     GestureDetector(
-                      onTap: () {
-                        Navigator.pop(context);
-                      },
-                      child: const Icon(Icons.arrow_back, color: Colors.white, size: 30),
+                      onTap: () => Navigator.pop(context),
+                      child: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 30,
+                      ),
                     ),
                     const SizedBox(width: 12),
-                    Expanded( // This ensures the text is centered
-                      child: const Text(
+                    const Expanded(
+                      child: Text(
                         'Find a Ride',
-                        textAlign: TextAlign.center, // This centers the text
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 30,
                           color: Colors.white,
@@ -84,10 +134,12 @@ class _FindARideScreenState extends State<FindARideScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Small Card: Ride Information Title
                         Container(
                           width: MediaQuery.of(context).size.width * 0.6,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 20,
+                          ),
                           decoration: const BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.only(
@@ -108,7 +160,7 @@ class _FindARideScreenState extends State<FindARideScreen> {
                               ),
                               const SizedBox(height: 8),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.center, // Center the line
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Container(
                                     height: 2,
@@ -121,7 +173,6 @@ class _FindARideScreenState extends State<FindARideScreen> {
                           ),
                         ),
 
-                        // Big Card: Form Fields
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(20),
@@ -134,39 +185,60 @@ class _FindARideScreenState extends State<FindARideScreen> {
                           ),
                           child: Column(
                             children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.location_on, color: Color(0x9C002B5B)),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: CustomInputField(
-                                      controller: pickUpController,
-                                      label: 'Pick-Up',
-                                      hintText: 'Your Location',
+                              // Pick-Up Field
+                              GestureDetector(
+                                onTap: () => _selectLocation(context, true),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.location_on,
+                                      color: Color(0x9C002B5B),
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: AbsorbPointer(
+                                        child: CustomInputField(
+                                          controller: pickUpController,
+                                          label: 'Pick-Up',
+                                          hintText: 'Tap to select location',
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+
+                              // Drop-Off Field
+                              GestureDetector(
+                                onTap: () => _selectLocation(context, false),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.location_on_outlined,
+                                      color: Color(0x9C002B5B),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: AbsorbPointer(
+                                        child: CustomInputField(
+                                          controller: dropOffController,
+                                          label: 'Drop-Off',
+                                          hintText: 'Tap to select location',
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                               const SizedBox(height: 20),
 
                               Row(
                                 children: [
-                                  const Icon(Icons.location_on_outlined, color: Color(0x9C002B5B)),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: CustomInputField(
-                                      controller: dropOffController,
-                                      label: 'Drop-Off',
-                                      hintText: 'Destination',
-                                    ),
+                                  const Icon(
+                                    Icons.calendar_today,
+                                    color: Color(0x9C002B5B),
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 20),
-
-                              Row(
-                                children: [
-                                  const Icon(Icons.calendar_today, color: Color(0x9C002B5B)),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: CustomInputField(
@@ -182,7 +254,10 @@ class _FindARideScreenState extends State<FindARideScreen> {
                               // Time Dropdown
                               Row(
                                 children: [
-                                  const Icon(Icons.access_time, color: Color(0x9C002B5B)),
+                                  const Icon(
+                                    Icons.access_time,
+                                    color: Color(0x9C002B5B),
+                                  ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: CustomDropdownField(
@@ -206,18 +281,45 @@ class _FindARideScreenState extends State<FindARideScreen> {
                               CustomButton(
                                 text: 'Search Ride',
                                 onPressed: () {
-                                  // Validate the form data
-                                  if (_formKey.currentState?.validate() ?? false) {
-                                    // Proceed with the logic if form is valid
+                                  if (_formKey.currentState?.validate() ??
+                                      false) {
+                                    // Check if one of the locations is WSO2
+                                    final isPickupWSO2 =
+                                        selectedPickupLocation != null &&
+                                        _isWSO2Location(
+                                          selectedPickupLocation!,
+                                        );
+                                    final isDropoffWSO2 =
+                                        selectedDropoffLocation != null &&
+                                        _isWSO2Location(
+                                          selectedDropoffLocation!,
+                                        );
+
+                                    if (!isPickupWSO2 && !isDropoffWSO2) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'One of the locations must be WSO2 Office',
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    // Proceed with ride search
                                     print('Searching ride...');
                                     print('Pick-Up: ${pickUpController.text}');
-                                    print('Drop-Off: ${dropOffController.text}');
+                                    print(
+                                      'Drop-Off: ${dropOffController.text}',
+                                    );
                                     print('Date: ${dateController.text}');
                                     print('Time selected: $selectedTime');
-                                    // Here you would typically trigger the ride search action
                                   } else {
-                                    // Form is not valid, show error messages
-                                    print('Please fill in all required fields.');
+                                    print(
+                                      'Please fill in all required fields.',
+                                    );
                                   }
                                 },
                               ),
