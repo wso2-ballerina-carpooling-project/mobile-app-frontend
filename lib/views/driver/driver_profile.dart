@@ -301,7 +301,7 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
                             children: [
                               TextSpan(
                                 text: 'Download Here',
-                                style: TextStyle(color: linkColor),
+                                style: TextStyle(color: Color.fromRGBO(71, 71, 231, 1)),
                               ),
                             ],
                           ),
@@ -348,7 +348,7 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
                 : const LinearGradient(
                     colors: [
                       primaryColor, // Darker blue as in image
-                      mainButtonColor, // Lighter blue as in image
+                      Color.fromRGBO(74, 94, 170, 1), // Lighter blue as in image
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -386,7 +386,7 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
                   Icon(
                     Icons.location_on_outlined, // Location icon
                     size: 10,
-                    color: isRight ? primaryColor : companyColor,
+                    color: isRight ? const Color.from(alpha: 1, red: 0.039, green: 0.055, blue: 0.165) : companyColor,
                   ),
                   const SizedBox(width: 4),
                   Text(
