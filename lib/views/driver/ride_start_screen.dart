@@ -19,19 +19,16 @@ class _RideStartScreenState extends State<RideStartScreen> {
   Position? currentPositionOfUser;
   Set<Marker> markersSet = {};
   Set<Polyline> polylineSet = {};
-  bool showPickupDialog = false;
 
   // Ride details
-  final String driverName = "John Wick";
-  final int totalMinutes = 30;
-  final int nextStopMinutes = 10;
-  final int afterNextStopMinutes = 20;
-  final String currentLocation = "Dissanayake Mawatha, Moratuwa";
-  final String destinationLocation = "Bandaranayake Mawatha, Katubedda";
-  final String passengerName = "Nalaka Dinesh"; // Added from the mockup
+  final String driverName = "John Deo";
+  final String vehicleNumber = "CBL 8090";
+  final String vehicleModel = "Honda Civic";
+  final int arrivalMinutes = 30;
+  final String destinationLocation = "Welmilla";
 
-  // Location thresholds for triggering the popup
-  final double arrivalThresholdMeters = 10.0; // Trigger popup when within this distance from pickup
+  // Driver's position - will be updated periodically
+  LatLng? driverPosition;
 
   static const CameraPosition _initialCameraPosition = CameraPosition(
     target: LatLng(6.8015, 79.9226), // Sri Lanka area as shown in screenshot
@@ -42,6 +39,8 @@ class _RideStartScreenState extends State<RideStartScreen> {
   void initState() {
     super.initState();
     _checkLocationPermission();
+    // Simulate driver movement
+    _startDriverMovementSimulation();
   }
 
   Future<void> _checkLocationPermission() async {
@@ -64,214 +63,78 @@ class _RideStartScreenState extends State<RideStartScreen> {
       );
       return;
     }
+  }
 
-    // Start a periodic location check to simulate driver arriving at pickup
-    Timer.periodic(const Duration(seconds: 5), (timer) {
-      _checkIfArrivedAtPickup();
+  void _startDriverMovementSimulation() {
+    // Initialize driver position near initial camera position
+    driverPosition = LatLng(
+      _initialCameraPosition.target.latitude - 0.005,
+      _initialCameraPosition.target.longitude - 0.003,
+    );
+    
+    // Update position every few seconds
+    Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (mounted && driverPosition != null) {
+        // Simulate driver movement towards destination
+        setState(() {
+          driverPosition = LatLng(
+            driverPosition!.latitude + 0.0003, 
+            driverPosition!.longitude + 0.0005
+          );
+        });
+        _updateMap();
+      }
     });
   }
 
-  Future<void> _checkIfArrivedAtPickup() async {
+  Future<void> _updateMap() async {
+    if (driverPosition == null || controllerGoogleMap == null) return;
+    
     try {
-      // Get current position
+      // Get passenger position (user's current location)
       Position userPosition = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
+      currentPositionOfUser = userPosition;
       
-      // Get pickup location (for demonstration, we're using the marker position)
-      LatLng pickupPosition = LatLng(userPosition.latitude, userPosition.longitude);
-      
-      // In a real app, you would compare the current position to the actual pickup location
-      // For demonstration, we'll simulate arrival after a delay
-      if (!showPickupDialog) {
-        // Simulate arrival after 3 seconds for demonstration
-        Future.delayed(const Duration(seconds: 3), () {
-          setState(() {
-            showPickupDialog = true;
-          });
-          _showPickupDialog();
-        });
-      }
-      
-      // In a real implementation, you would calculate the distance and check if it's below threshold:
-      /*
-      double distanceToPickup = Geolocator.distanceBetween(
-        userPosition.latitude,
-        userPosition.longitude,
-        pickupPosition.latitude,
-        pickupPosition.longitude
-      );
-      
-      if (distanceToPickup <= arrivalThresholdMeters && !showPickupDialog) {
-        setState(() {
-          showPickupDialog = true;
-        });
-        _showPickupDialog();
-      }
-      */
-    } catch (e) {
-      debugPrint('Error checking arrival: $e');
-    }
-  }
-
-  void _showPickupDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20.0),
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'You arrived to pickup location',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: const Icon(Icons.close),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Passenger Details',
-                  style: TextStyle(
-                    color: Colors.black54,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 15),
-                CircleAvatar(
-                  radius: 40,
-                  backgroundColor: Colors.grey[200],
-                  backgroundImage: const NetworkImage(
-                    'https://via.placeholder.com/150', // Replace with actual passenger image
-                  ),
-                ),
-                const SizedBox(height: 15),
-                Text(
-                  passengerName,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.phone, color: Colors.black),
-                        onPressed: () {
-                          // Implement call functionality
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    // Implement pickup confirmation logic
-                  },
-                  child: const Text(
-                    'Picked',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> getCurrentLiveLocationOfUser() async {
-    try {
-      Position positionOfUser = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-      currentPositionOfUser = positionOfUser;
-      LatLng positionOfUserInLatLan = LatLng(
+      LatLng passengerPosition = LatLng(
         currentPositionOfUser!.latitude,
         currentPositionOfUser!.longitude,
       );
       
-      // Example destination for route drawing
-      LatLng destinationPosition = LatLng(
-        currentPositionOfUser!.latitude + 0.02, 
-        currentPositionOfUser!.longitude + 0.02
-      );
-      
-      // Add markers and draw route
-      addMarkers(positionOfUserInLatLan, destinationPosition);
-      drawPolylineFromOriginToDestination(positionOfUserInLatLan, destinationPosition);
+      // Update markers and route
+      _addMarkers(driverPosition!, passengerPosition);
+      _drawPolylineFromOriginToDestination(driverPosition!, passengerPosition);
 
+      // Keep the camera focused on driver's position
       CameraPosition cameraPosition = CameraPosition(
-        target: positionOfUserInLatLan,
+        target: driverPosition!,
         zoom: 15,
       );
+      
       await controllerGoogleMap!.animateCamera(
         CameraUpdate.newCameraPosition(cameraPosition),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error getting location: $e')),
-      );
+      debugPrint('Error updating map: $e');
     }
   }
 
-  Future<void> drawPolylineFromOriginToDestination(LatLng originPosition, LatLng destinationPosition) async {
-    // In a real app, you'd implement actual routing API calls here
-    // For demonstration, creating a simple route with waypoints
-    
+  Future<void> _drawPolylineFromOriginToDestination(LatLng driverPosition, LatLng passengerPosition) async {
     polylineSet.clear();
     
-    // Creating a simple route with intermediate points for a more natural look
+    // Create a more natural looking route
     final List<LatLng> polylineCoordinates = [
-      originPosition,
+      driverPosition,
       LatLng(
-        originPosition.latitude + (destinationPosition.latitude - originPosition.latitude) * 0.3,
-        originPosition.longitude + (destinationPosition.longitude - originPosition.longitude) * 0.5,
+        driverPosition.latitude + (passengerPosition.latitude - driverPosition.latitude) * 0.3,
+        driverPosition.longitude + (passengerPosition.longitude - driverPosition.longitude) * 0.5,
       ),
       LatLng(
-        originPosition.latitude + (destinationPosition.latitude - originPosition.latitude) * 0.7,
-        originPosition.longitude + (destinationPosition.longitude - originPosition.longitude) * 0.6,
+        driverPosition.latitude + (passengerPosition.latitude - driverPosition.latitude) * 0.7,
+        driverPosition.longitude + (passengerPosition.longitude - driverPosition.longitude) * 0.6,
       ),
-      destinationPosition,
+      passengerPosition,
     ];
     
     Polyline polyline = Polyline(
@@ -287,40 +150,28 @@ class _RideStartScreenState extends State<RideStartScreen> {
     });
   }
 
-  void addMarkers(LatLng pickupLocation, LatLng dropOffLocation) {
+  void _addMarkers(LatLng driverPosition, LatLng passengerPosition) {
     markersSet.clear();
     
-    // Current location marker
-    Marker pickupMarker = Marker(
-      markerId: const MarkerId("pickup"),
-      position: pickupLocation,
+    // Driver marker
+    Marker driverMarker = Marker(
+      markerId: const MarkerId("driver"),
+      position: driverPosition,
       icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-      infoWindow: InfoWindow(title: "Current Location", snippet: currentLocation),
+      infoWindow: InfoWindow(title: "Driver", snippet: driverName),
     );
     
-    // Destination marker
-    Marker dropOffMarker = Marker(
-      markerId: const MarkerId("dropoff"),
-      position: dropOffLocation,
+    // Passenger marker (pickup location)
+    Marker passengerMarker = Marker(
+      markerId: const MarkerId("passenger"),
+      position: passengerPosition,
       icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-      infoWindow: InfoWindow(title: "Destination", snippet: destinationLocation),
-    );
-    
-    // Intermediate destination marker (next stop)
-    Marker intermediateMarker = Marker(
-      markerId: const MarkerId("intermediate"),
-      position: LatLng(
-        pickupLocation.latitude + (dropOffLocation.latitude - pickupLocation.latitude) * 0.6,
-        pickupLocation.longitude + (dropOffLocation.longitude - pickupLocation.longitude) * 0.6,
-      ),
-      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
-      infoWindow: const InfoWindow(title: "Intermediate Stop", snippet: "Pickup another passenger"),
+      infoWindow: const InfoWindow(title: "Your Location", snippet: "Pickup point"),
     );
     
     setState(() {
-      markersSet.add(pickupMarker);
-      markersSet.add(dropOffMarker);
-      markersSet.add(intermediateMarker);
+      markersSet.add(driverMarker);
+      markersSet.add(passengerMarker);
     });
   }
 
@@ -369,7 +220,7 @@ class _RideStartScreenState extends State<RideStartScreen> {
               googleMapCompleterController.complete(controller);
               controllerGoogleMap = controller;
               updateMapTheme(controller);
-              getCurrentLiveLocationOfUser();
+              _updateMap();
             },
           ),
           
@@ -392,19 +243,19 @@ class _RideStartScreenState extends State<RideStartScreen> {
               child: IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.black87),
                 onPressed: () {
-                  Navigator.of(context).pushReplacementNamed('/main');
+                  Navigator.of(context).pop();
                 },
               ),
             ),
           ),
           
-          // Arrival info panel
+          // Driver info panel
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: const BorderRadius.only(
@@ -423,73 +274,121 @@ class _RideStartScreenState extends State<RideStartScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Arrival time
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Arriving in $totalMinutes Mins',
-                          style: const TextStyle(
-                            color: Colors.black54,
-                            fontSize: 14,
-                          ),
-                        ),
-                        Text(
-                          _getArrivalTime(totalMinutes),
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Stops info
+                  // Destination and arrival time
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: _buildStopInfoCard(
-                          label: 'Next Stop',
-                          minutes: nextStopMinutes,
-                          driverName: driverName,
+                      Text(
+                        destinationLocation,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
                       ),
-                      Expanded(
-                        child: _buildStopInfoCard(
-                          label: 'After Next',
-                          minutes: afterNextStopMinutes,
-                          driverName: driverName,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            'Arriving in $arrivalMinutes Mins',
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _getArrivalTime(arrivalMinutes),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                   
                   const SizedBox(height: 16),
                   
-                  // Location details
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      children: [
-                        _buildLocationRow(
-                          icon: Icons.my_location,
-                          location: currentLocation,
-                          color: Colors.black,
+                  // Driver details - Restructured to match the design
+                  Row(
+                    children: [
+                      // Driver profile image
+                      const CircleAvatar(
+                        radius: 25,
+                        backgroundImage: NetworkImage(
+                          'https://via.placeholder.com/150', // Replace with actual driver image
                         ),
-                        const SizedBox(height: 12),
-                        _buildLocationRow(
-                          icon: Icons.location_on,
-                          location: destinationLocation,
-                          color: Colors.deepOrange,
+                      ),
+                      const SizedBox(width: 15),
+                      
+                      // Driver name only
+                      Text(
+                        driverName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
-                      ],
-                    ),
+                      ),
+                      
+                      // Spacer to push vehicle details to the right
+                      const Spacer(),
+                      
+                      // Vehicle details placed on the right side
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            vehicleNumber,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            vehicleModel,
+                            style: const TextStyle(
+                              color: Colors.black54,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(width: 16),
+                      
+                      // Call button
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.grey[100],
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.phone, color: Colors.black),
+                          onPressed: () {
+                            // Implement call functionality
+                            debugPrint("Calling driver");
+                          },
+                        ),
+                      ),
+                      
+                      const SizedBox(width: 12),
+                      
+                      // Message button
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.grey[100],
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.message, color: Colors.black),
+                          onPressed: () {
+                            // Implement message functionality
+                            debugPrint("Messaging driver");
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -497,105 +396,6 @@ class _RideStartScreenState extends State<RideStartScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildStopInfoCard({
-    required String label,
-    required int minutes,
-    required String driverName,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.black54,
-                ),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'In $minutes Mins',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.orange,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              // Move profile image and name to be stacked vertically
-              Column(
-                children: [
-                  const CircleAvatar(
-                    radius: 16,
-                    backgroundImage: NetworkImage(
-                      'https://via.placeholder.com/150', // Replace with actual driver image
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    driverName,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black87
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              const Icon(Icons.phone, size: 20, color: Colors.blue),
-              const SizedBox(width: 14),
-              const Icon(Icons.message, size: 20, color: Colors.blue),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLocationRow({
-    required IconData icon,
-    required String location,
-    required Color color,
-  }) {
-    return Row(
-      children: [
-        Icon(
-          icon,
-          size: 20,
-          color: color,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            location,
-            style: const TextStyle(
-              fontWeight: FontWeight.w500,  
-              color: Colors.black54
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
     );
   }
 }
