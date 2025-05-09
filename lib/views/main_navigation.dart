@@ -85,9 +85,7 @@ class CustomTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // You can also customize the tab bar based on user role if needed
-    final String homeLabel = userRole == UserRole.driver ? 'Driver Home' : 'Home';
-    final String profileLabel = userRole == UserRole.driver ? 'Driver Profile' : 'My Profile';
-
+  
     return Container(
       height: 70,
       decoration: BoxDecoration(

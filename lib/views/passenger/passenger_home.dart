@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/config/constant.dart';
+import 'package:mobile_frontend/views/passenger/find_a_ride_screen.dart';
 import 'package:mobile_frontend/widgets/last_trip_item.dart';
 import 'package:mobile_frontend/models/last_trip.dart';
 import 'package:mobile_frontend/widgets/passender_route_card.dart';
@@ -79,24 +80,36 @@ class _PassengerHomeState extends State<PassengerHome> {
               ),
             ),
             // Search bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.location_on, color: Colors.grey),
-                    const SizedBox(width: 10),
-                    const Text(
-                      "Looking for lift?",
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
-                    ),
-                    const Spacer(),
-                  ],
+            GestureDetector(
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (BuildContext context) {
+                    return FindARideScreen();
+                  },
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.location_on, color: Colors.grey),
+                      const SizedBox(width: 10),
+                      const Text(
+                        "Looking for lift?",
+                        style: TextStyle(color: Colors.grey, fontSize: 16),
+                      ),
+                      const Spacer(),
+                    ],
+                  ),
                 ),
               ),
             ),

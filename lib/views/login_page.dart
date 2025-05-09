@@ -88,7 +88,7 @@ class _LoginPageState extends State<LoginPage> {
                             MaterialPageRoute(
                               builder:
                                   (context) => const MainNavigation(
-                                    userRole: UserRole.driver,
+                                    userRole: UserRole.passenger,
                                   ),
                             ),
                           );

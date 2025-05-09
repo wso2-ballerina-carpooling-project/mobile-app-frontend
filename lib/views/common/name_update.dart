@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/config/constant.dart';
-import 'package:mobile_frontend/views/main_navigation.dart';
 import 'package:mobile_frontend/widgets/custom_input_field.dart';
 import 'package:mobile_frontend/widgets/custom_button.dart';
 
