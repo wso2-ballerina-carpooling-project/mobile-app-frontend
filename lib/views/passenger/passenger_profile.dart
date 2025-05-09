@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:mobile_frontend/config/constant.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mobile_frontend/config/constant.dart';
 
 class PassengerProfile extends StatefulWidget {
   const PassengerProfile({super.key});
@@ -21,9 +21,6 @@ class _PassengerProfileState extends State<PassengerProfile> {
   String userEmail = 'nalaka@wso2.com';
 
   // Custom colors
-  final Color navyBackgroundColor = const Color.fromRGBO(10, 14, 42, 1); // From alpha: 1, red: 0.039, green: 0.055, blue: 0.165
-  final Color buttonColor = const Color.fromRGBO(74, 94, 170, 1);
-  final Color linkColor = const Color.fromRGBO(71, 71, 231, 1);
 
   Future<void> _pickImage(ImageSource source) async {
     final XFile? selectedImage = await _picker.pickImage(source: source);
@@ -71,7 +68,7 @@ class _PassengerProfileState extends State<PassengerProfile> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: navyBackgroundColor,
+      backgroundColor: primaryColor,
       body: SafeArea(
         child: Column(
           children: [

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/config/constant.dart';
+import 'package:mobile_frontend/views/passenger/passenger_ride_tracking.dart';
 
 class RouteCardPassenger extends StatelessWidget {
   final String startLocation;
@@ -182,26 +183,20 @@ class RouteCardPassenger extends StatelessWidget {
               ),
 
               // Track button
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isRideStarted
-                          ? mainButtonColor
-                          : Colors.grey.shade400,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                onPressed: isRideStarted ? onTrackPressed : null,
-                child: const Text(
-                  'Track',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
+                          // Inside RouteCardPassenger widget
+            ElevatedButton(
+              onPressed: isRideStarted ? () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (BuildContext context) {
+                    return PassengerRideTracking(); // Replace with your tracking widget
+                  },
+                );
+              } : null,
+              child: Text('Track Ride'),
+            )
             ],
           ),
         ],

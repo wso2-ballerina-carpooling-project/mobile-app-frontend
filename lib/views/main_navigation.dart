@@ -5,6 +5,7 @@ import 'package:mobile_frontend/views/driver/driver_home.dart';
 import 'package:mobile_frontend/views/driver/driver_profile.dart';
 import 'package:mobile_frontend/views/common/notification_page.dart';
 import 'package:mobile_frontend/views/passenger/passenger_home.dart';
+import 'package:mobile_frontend/views/passenger/passenger_profile.dart';
 
 enum UserRole {
   driver,
@@ -48,7 +49,7 @@ class _MainNavigationState extends State<MainNavigation> {
         const PassengerHome(),
         const ActivitiesScreen(),
         const NotificationsScreen(),
-        const DriverProfilePage(),
+        const PassengerProfile(),
       ];
     }
   }
