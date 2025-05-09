@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/config/constant.dart';
 
-class RouteCardPassenger extends StatefulWidget {
+class RouteCardPassenger extends StatelessWidget {
   final String startLocation;
   final String startAddress;
   final String endLocation;
@@ -9,7 +9,7 @@ class RouteCardPassenger extends StatefulWidget {
   final String date;
   final String time;
   final bool isRideStarted;
-  final Function()? onStartPressed;
+  final bool isGoingToWork;
   final Function()? onTrackPressed;
 
   const RouteCardPassenger({
@@ -20,20 +20,15 @@ class RouteCardPassenger extends StatefulWidget {
     required this.endAddress,
     required this.date,
     required this.time,
-    this.isRideStarted = false,
-    this.onStartPressed,
+    this.isRideStarted = true,
+    this.isGoingToWork = true,
     this.onTrackPressed,
   });
 
   @override
-  State<RouteCardPassenger> createState() => _RouteCardState();
-}
-
-class _RouteCardState extends State<RouteCardPassenger> {
-  @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.all(8),
+      margin: const EdgeInsets.symmetric(vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -48,99 +43,35 @@ class _RouteCardState extends State<RouteCardPassenger> {
       ),
       child: Column(
         children: [
-          // Track button that shows only when ride is started
-          if (widget.isRideStarted)
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton(
+          // Top section with Back button and Date
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Back to work/home button
+              ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade700,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  backgroundColor: companyColor,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                onPressed: widget.onTrackPressed,
-                child: const Text('Track', style: TextStyle(color: Colors.white)),
-              ),
-            ),
-            
-          const SizedBox(height: 8),
-            
-          // Main content row
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Left side with timeline
-              Column(
-                children: [
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: const BoxDecoration(
-                      color: Colors.blue,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  Container(
-                    width: 2,
-                    height: 64,
-                    color: Colors.grey.shade300,
-                  ),
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: const BoxDecoration(
-                      color: Colors.orange,
-                      shape: BoxShape.rectangle,
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(width: 16),
-              
-              // Middle section with locations
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.startLocation,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                    Text(
-                      widget.startAddress,
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 36),
-                    Text(
-                      widget.endLocation,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                    Text(
-                      widget.endAddress,
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
+                onPressed: () => {},
+                child: Text(
+                  isGoingToWork ? 'Back to work' : 'Back to home',
+                  style: const TextStyle(color: Colors.black, fontSize: 14),
                 ),
               ),
-              
-              // Right side with date/time
+
+              // Date and time box
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade200,
                   borderRadius: BorderRadius.circular(8),
@@ -148,37 +79,131 @@ class _RouteCardState extends State<RouteCardPassenger> {
                 child: Column(
                   children: [
                     Text(
-                      widget.date,
-                      style: const TextStyle(fontSize: 12),
+                      date,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black87,
+                      ),
                     ),
                     Text(
-                      widget.time,
-                      style: const TextStyle(fontSize: 12),
+                      time,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black87,
+                      ),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          
+
           const SizedBox(height: 16),
-          
-          // Only show "Back to work" button when ride is not started
-          if (!widget.isRideStarted)
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
+
+          // Route timeline and Track button
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Timeline with locations
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Left side with timeline
+                    Column(
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: const BoxDecoration(
+                            color: primaryColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        Container(
+                          width: 2,
+                          height: 60,
+                          color: Colors.grey.shade300,
+                        ),
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: const BoxDecoration(
+                            color: companyColor,
+                            shape: BoxShape.rectangle,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(width: 16),
+
+                    // Locations
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            startLocation,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            startAddress,
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 36),
+                          Text(
+                            endLocation,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            endAddress,
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Track button
+              ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange.shade400, 
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  backgroundColor:
+                      isRideStarted
+                          ? mainButtonColor
+                          : Colors.grey.shade400,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                onPressed: widget.onStartPressed,
-                child: const Text('Back to work', style: TextStyle(color: Colors.white, fontSize: 16)),
+                onPressed: isRideStarted ? onTrackPressed : null,
+                child: const Text(
+                  'Track',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
-            ),
+            ],
+          ),
         ],
       ),
     );

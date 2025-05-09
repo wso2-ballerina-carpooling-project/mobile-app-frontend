@@ -1,9 +1,9 @@
 // lib/views/main_navigation.dart
 import 'package:flutter/material.dart';
-import 'package:mobile_frontend/views/activities_page.dart';
+import 'package:mobile_frontend/views/common/activities_page.dart';
 import 'package:mobile_frontend/views/driver/driver_home.dart';
 import 'package:mobile_frontend/views/driver/driver_profile.dart';
-import 'package:mobile_frontend/views/notification_page.dart';
+import 'package:mobile_frontend/views/common/notification_page.dart';
 import 'package:mobile_frontend/views/passenger/passenger_home.dart';
 
 enum UserRole {
@@ -85,9 +85,7 @@ class CustomTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // You can also customize the tab bar based on user role if needed
-    final String homeLabel = userRole == UserRole.driver ? 'Driver Home' : 'Home';
-    final String profileLabel = userRole == UserRole.driver ? 'Driver Profile' : 'My Profile';
-
+  
     return Container(
       height: 70,
       decoration: BoxDecoration(
@@ -108,7 +106,7 @@ class CustomTabBar extends StatelessWidget {
             index: 0,
             icon: Icons.home_outlined,
             selectedIcon: Icons.home,
-            label: homeLabel,
+            label: "Home",
           ),
           _buildTabItem(
             index: 1,
@@ -126,7 +124,7 @@ class CustomTabBar extends StatelessWidget {
             index: 3,
             icon: Icons.person_outline,
             selectedIcon: Icons.person,
-            label: profileLabel,
+            label: "Profile",
           ),
         ],
       ),

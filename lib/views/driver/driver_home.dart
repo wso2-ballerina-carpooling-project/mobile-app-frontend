@@ -16,7 +16,7 @@ class DriverHomeScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1736),
+      backgroundColor: primaryColor,
       body: SafeArea(
         child: Column(
           children: [
