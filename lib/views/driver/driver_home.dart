@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/config/constant.dart';
+import 'package:mobile_frontend/views/driver/post_a_ride.dart';
 import 'package:mobile_frontend/widgets/last_trip_item.dart';
 import 'package:mobile_frontend/models/last_trip.dart';
 import 'package:mobile_frontend/widgets/route_card.dart';
@@ -10,9 +11,18 @@ class DriverHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<LastTrip> lastTrips = [
-      LastTrip(locationName: 'Lakewood Residence', address: '165/A8 Main Street, 11, Colombo'),
-      LastTrip(locationName: 'Marino Mall', address: 'No. 590, Galle Road, Colombo 03'),
-      LastTrip(locationName: 'Lakewood Residence', address: '165/A8 Main Street, 11, Colombo'),
+      LastTrip(
+        locationName: 'Lakewood Residence',
+        address: '165/A8 Main Street, 11, Colombo',
+      ),
+      LastTrip(
+        locationName: 'Marino Mall',
+        address: 'No. 590, Galle Road, Colombo 03',
+      ),
+      LastTrip(
+        locationName: 'Lakewood Residence',
+        address: '165/A8 Main Street, 11, Colombo',
+      ),
     ];
 
     return Scaffold(
@@ -20,12 +30,15 @@ class DriverHomeScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 50),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+                vertical: 50,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
+                  const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
@@ -38,14 +51,25 @@ class DriverHomeScreen extends StatelessWidget {
                       ),
                       Text(
                         "Got a Seat to Share?",
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.white,
-                        ),
+                        style: TextStyle(fontSize: 18, color: Colors.white),
                       ),
                     ],
                   ),
-                  Icon(Icons.add_circle_outline, color: Colors.white, size: 32),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.add_circle_outline,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => RidePostScreen(),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -71,7 +95,7 @@ class DriverHomeScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: blackWithOpacity
+                          color: blackWithOpacity,
                         ),
                       ),
                       const SizedBox(height: 15),
@@ -86,7 +110,9 @@ class DriverHomeScreen extends StatelessWidget {
                         seatInfo: "2/4",
                         price: "Rs.1200",
                         onStartPressed: () {
-                          Navigator.of(context).pushReplacementNamed('/rideStart');
+                          Navigator.of(
+                            context,
+                          ).pushReplacementNamed('/rideStart');
                         },
                       ),
                       const SizedBox(height: 30),
@@ -95,19 +121,20 @@ class DriverHomeScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: blackWithOpacity
+                          color: blackWithOpacity,
                         ),
                       ),
                       const SizedBox(height: 15),
-                       Divider(
+                      Divider(
                         color: Colors.grey.shade300,
                         thickness: 1.0,
                         height: 1.0,
                       ),
                       Column(
-                        children: lastTrips
-                            .map((trip) => LastTripItem(trip: trip))
-                            .toList(),
+                        children:
+                            lastTrips
+                                .map((trip) => LastTripItem(trip: trip))
+                                .toList(),
                       ),
                     ],
                   ),
@@ -116,7 +143,7 @@ class DriverHomeScreen extends StatelessWidget {
             ),
           ],
         ),
-      ), 
+      ),
     );
   }
 }
