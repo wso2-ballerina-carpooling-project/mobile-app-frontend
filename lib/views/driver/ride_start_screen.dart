@@ -7,6 +7,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:ui' as ui;
 import 'dart:math' show atan2, pi;
+import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:web_socket_channel/status.dart' as status;
 
 import 'package:mobile_frontend/widgets/Map_Related/LocationRow.dart';
 import 'package:mobile_frontend/widgets/Map_Related/StopInfoCard.dart';
@@ -19,6 +21,15 @@ class RideStartScreen extends StatefulWidget {
 }
 
 class _RideStartScreenState extends State<RideStartScreen> {
+
+  WebSocketChannel? _channel;
+  Timer? _heartbeatTimer;
+  bool _isWebSocketConnected = false;
+  final String _webSocketUrl = 'ws://10.0.2.2:8080/ws'; // Replace with your WebSocket URL
+  
+  // Add driver/ride ID for identification
+  final String _driverId = 'driver_123'; // Replace with actual driver ID
+  final String _rideId = 'ride_456'; // Replace with actual ride ID
 
   BitmapDescriptor? carIcon;
   Marker? vehicleMarker;
@@ -60,14 +71,187 @@ class _RideStartScreenState extends State<RideStartScreen> {
     super.initState();
     _checkLocationPermission();
     _createCarMarkerIcon();
+    _initializeWebSocket();
   }
 
   @override
   void dispose() {
     // Cancel timer when screen is disposed
+    _heartbeatTimer?.cancel();
+    _closeWebSocket();
     locationUpdateTimer?.cancel();
     super.dispose();
   }
+
+
+    Future<void> _initializeWebSocket() async {
+    try {
+      debugPrint('Connecting to WebSocket: $_webSocketUrl');
+      
+      _channel = WebSocketChannel.connect(
+        Uri.parse(_webSocketUrl),
+      );
+
+      // Listen to WebSocket messages
+      _channel!.stream.listen(
+        (message) {
+          _handleWebSocketMessage(message);
+        },
+        onError: (error) {
+          debugPrint('WebSocket error: $error');
+          _isWebSocketConnected = false;
+          _attemptReconnection();
+        },
+        onDone: () {
+          debugPrint('WebSocket connection closed');
+          _isWebSocketConnected = false;
+          _attemptReconnection();
+        },
+      );
+
+      // Send initial connection message
+      _sendInitialConnectionMessage();
+      
+      // Start heartbeat to keep connection alive
+      _startHeartbeat();
+      
+      setState(() {
+        _isWebSocketConnected = true;
+      });
+      
+      debugPrint('WebSocket connected successfully');
+      
+    } catch (e) {
+      debugPrint('Failed to connect to WebSocket: $e');
+      _isWebSocketConnected = false;
+      _attemptReconnection();
+    }
+  }
+
+  void _sendInitialConnectionMessage() {
+    if (_channel != null && _isWebSocketConnected) {
+      final message = {
+        'type': 'driver_connected',
+        'driver_id': _driverId,
+        'ride_id': _rideId,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+      
+      _channel!.sink.add(jsonEncode(message));
+      debugPrint('Initial connection message sent');
+    }
+  }
+
+  void _startHeartbeat() {
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (_channel != null && _isWebSocketConnected) {
+        final heartbeat = {
+          'type': 'heartbeat',
+          'driver_id': _driverId,
+          'timestamp': DateTime.now().toIso8601String(),
+        };
+        
+        try {
+          _channel!.sink.add(jsonEncode(heartbeat));
+        } catch (e) {
+          debugPrint('Failed to send heartbeat: $e');
+          _isWebSocketConnected = false;
+          _attemptReconnection();
+        }
+      }
+    });
+  }
+
+  void _handleWebSocketMessage(dynamic message) {
+    try {
+      final data = jsonDecode(message);
+      debugPrint('Received WebSocket message: $data');
+      
+      // Handle different message types from backend
+      switch (data['type']) {
+        case 'location_received':
+          debugPrint('Location update acknowledged by backend');
+          break;
+        case 'ride_update':
+          // Handle ride updates from backend
+          break;
+        case 'passenger_message':
+          // Handle passenger messages
+          break;
+        default:
+          debugPrint('Unknown message type: ${data['type']}');
+      }
+    } catch (e) {
+      debugPrint('Error handling WebSocket message: $e');
+    }
+  }
+
+  void _sendLocationUpdate(LatLng location, {double? speed, double? heading}) {
+    if (_channel != null && _isWebSocketConnected) {
+      final locationData = {
+        'type': 'location_update',
+        'driver_id': _driverId,
+        'ride_id': _rideId,
+        'latitude': location.latitude,
+        'longitude': location.longitude,
+        'speed': speed ?? 0.0,
+        'heading': heading ?? markerRotation.toDouble(),
+        'timestamp': DateTime.now().toIso8601String(),
+        'accuracy': currentPositionOfUser?.accuracy ?? 0.0,
+      };
+
+      try {
+        _channel!.sink.add(jsonEncode(locationData));
+        debugPrint('Location sent to backend: ${location.latitude}, ${location.longitude}');
+      } catch (e) {
+        debugPrint('Failed to send location update: $e');
+        _isWebSocketConnected = false;
+        _attemptReconnection();
+      }
+    } else {
+      debugPrint('WebSocket not connected, cannot send location update');
+    }
+  }
+
+  void _attemptReconnection() {
+    if (_isWebSocketConnected) return; // Already connected
+    
+    debugPrint('Attempting WebSocket reconnection in 5 seconds...');
+    
+    Timer(const Duration(seconds: 5), () {
+      if (!_isWebSocketConnected) {
+        _initializeWebSocket();
+      }
+    });
+  }
+
+  void _closeWebSocket() {
+    try {
+      if (_channel != null) {
+        // Send disconnect message
+        final disconnectMessage = {
+          'type': 'driver_disconnected',
+          'driver_id': _driverId,
+          'ride_id': _rideId,
+          'timestamp': DateTime.now().toIso8601String(),
+        };
+        
+        _channel!.sink.add(jsonEncode(disconnectMessage));
+        
+        // Close the connection
+        _channel!.sink.close(status.goingAway);
+        _channel = null;
+      }
+      
+      _isWebSocketConnected = false;
+      _heartbeatTimer?.cancel();
+      
+      debugPrint('WebSocket connection closed');
+    } catch (e) {
+      debugPrint('Error closing WebSocket: $e');
+    }
+  }
+
 
 
   Future<void> _createCarMarkerIcon() async {
@@ -130,8 +314,14 @@ class _RideStartScreenState extends State<RideStartScreen> {
       }
       
       _updateVehicleMarker(newLocation);
-      previousPosition = newLocation;
+
+      _sendLocationUpdate(
+        newLocation,
+        speed: currentPosition.speed,
+        heading: markerRotation.toDouble(),
+      );
       
+      previousPosition = newLocation;
       // Check if driver is close to waypoint for notifications
       _checkProximityToWaypoints(newLocation);
       
