@@ -1,13 +1,103 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:jwt_decode/jwt_decode.dart';
 import 'package:mobile_frontend/config/constant.dart';
+import 'package:mobile_frontend/views/main_navigation.dart';
 
-class LoadingPage extends StatelessWidget {
+class LoadingPage extends StatefulWidget {
   const LoadingPage({super.key});
+
+  @override
+  State<LoadingPage> createState() => _LoadingPageState();
+}
+
+class _LoadingPageState extends State<LoadingPage> {
+  final _storage = FlutterSecureStorage();
+  bool _isCheckingToken = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkTokenAndNavigate();
+  }
+
+  Future<void> _checkTokenAndNavigate() async {
+    try {
+      // Retrieve token from secure storage
+      String? token = await _storage.read(key: 'jwt_token');
+
+      if (token == null) {
+        // No token, show Get Started UI
+        setState(() {
+          _isCheckingToken = false;
+        });
+        return;
+      }
+
+      // Decode and validate token
+      Map<String, dynamic> payload;
+      try {
+        payload = Jwt.parseJwt(token);
+      } catch (e) {
+        // Invalid token format, clear storage and show Get Started UI
+        await _storage.delete(key: 'jwt_token');
+        setState(() {
+          _isCheckingToken = false;
+        });
+        return;
+      }
+
+      // Check token expiry
+      if (Jwt.isExpired(token)) {
+        // Token expired, clear storage and show Get Started UI
+        await _storage.delete(key: 'jwt_token');
+        setState(() {
+          _isCheckingToken = false;
+        });
+        return;
+      }
+
+      // Extract user details
+      final userRole = payload['role'] ?? 'passenger';
+      final userStatus = payload['status'] ?? 'unknown';
+
+      // Navigate based on status
+      if (userStatus == 'pending' && userRole != 'admin') {
+        Navigator.pushReplacementNamed(context, '/waiting');
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MainNavigation(
+              userRole: userRole == 'driver' ? UserRole.driver : UserRole.passenger,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      // Any error, clear storage and show Get Started UI
+      print('Error checking token: $e');
+      await _storage.delete(key: 'jwt_token');
+      setState(() {
+        _isCheckingToken = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
 
+    // Show loading indicator while checking token
+    if (_isCheckingToken) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    // Show Get Started UI if no valid token
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -17,10 +107,10 @@ class LoadingPage extends StatelessWidget {
             colors: [
               Color.fromRGBO(10, 14, 42, 1),
               primaryColorWithOpacity,
-              Color.fromARGB(255, 86, 86, 86), 
-              Color.fromARGB(255, 116, 116, 116), 
+              Color.fromARGB(255, 86, 86, 86),
+              Color.fromARGB(255, 116, 116, 116),
             ],
-            stops: [0.0, 0.5,0.75, 1.0], 
+            stops: [0.0, 0.5, 0.75, 1.0],
           ),
         ),
         child: Padding(
@@ -70,9 +160,7 @@ class LoadingPage extends StatelessWidget {
                   ],
                 ),
               ),
-
               const SizedBox(height: 0),
-
               // Car image taking 50% of screen height
               SizedBox(
                 height: screenHeight * 0.5,
@@ -81,9 +169,7 @@ class LoadingPage extends StatelessWidget {
                   child: Image.asset('assets/car.png', fit: BoxFit.contain),
                 ),
               ),
-
               const SizedBox(height: 0),
-
               // Get Started Button
               Align(
                 alignment: Alignment.centerLeft,
@@ -103,7 +189,7 @@ class LoadingPage extends StatelessWidget {
                     ),
                   ),
                   onPressed: () {
-                    Navigator.pushNamed(context, '/login');
+                    Navigator.pushReplacementNamed(context, '/login');
                   },
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -130,7 +216,6 @@ class LoadingPage extends StatelessWidget {
                   ),
                 ),
               ),
-
               const SizedBox(height: 80),
             ],
           ),
