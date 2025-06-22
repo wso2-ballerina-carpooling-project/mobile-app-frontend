@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:mobile_frontend/config/constant.dart';
 import 'package:mobile_frontend/views/main_navigation.dart';
 import 'package:mobile_frontend/widgets/custom_input_field.dart';
 import 'package:mobile_frontend/widgets/custom_button.dart';
-
+import 'package:mobile_frontend/services/auth_services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,12 +18,83 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all fields')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final loginData = {
+      'email': _emailController.text,
+      'password': _passwordController.text,
+    };
+
+    try {
+      final response = await ApiService.loginUser(loginData);
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        final prefs = await SharedPreferences.getInstance();
+        // print(responseBody);
+        final token = responseBody['token'];
+        Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
+        await prefs.setString('token', token);
+        print(decodedToken);
+        final userRole = decodedToken['role']; // Fallback to passenger
+        final firstName = decodedToken['firstName']; // Fallback to passenger
+        final lastName = decodedToken['lastName']; // Fallback to passenger
+        await prefs.setString('firstName', firstName);
+        await prefs.setString('lastName', lastName);
+        if (decodedToken['status'] == 'pending' &&
+            userRole != 'admin') {
+          Navigator.pushReplacementNamed(context, '/waiting');
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (context) => MainNavigation(
+                    userRole:
+                        userRole == 'driver'
+                            ? UserRole.driver
+                            : UserRole.passenger,
+                  ),
+            ),
+          );
+        }
+      } else {
+        final errorMessage =
+            jsonDecode(response.body)['message'] ?? 'Login failed';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
   }
 
   @override
@@ -40,7 +114,6 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ),
-
             Expanded(
               flex: 4,
               child: Container(
@@ -82,18 +155,8 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 40),
                       CustomButton(
-                        text: "Login",
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (context) => const MainNavigation(
-                                    userRole: UserRole.driver,
-                                  ),
-                            ),
-                          );
-                        },
+                        text: _isLoading ? "Logging in..." : "Login",
+                        onPressed: _handleLogin,
                       ),
                       const Spacer(),
                       Center(
@@ -103,7 +166,7 @@ class _LoginPageState extends State<LoginPage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const Text(
-                                "didn't have an account? ",
+                                "Didn't have an account? ",
                                 style: TextStyle(
                                   color: Colors.black87,
                                   fontSize: 14,
@@ -111,9 +174,10 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               GestureDetector(
                                 onTap: () {
-                                  Navigator.of(
+                                  Navigator.pushReplacementNamed(
                                     context,
-                                  ).pushReplacementNamed('/signup');
+                                    '/signup',
+                                  );
                                 },
                                 child: const Text(
                                   'Sign Up here',

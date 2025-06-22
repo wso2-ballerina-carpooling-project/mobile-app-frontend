@@ -4,9 +4,30 @@ import 'package:mobile_frontend/views/driver/post_a_ride.dart';
 import 'package:mobile_frontend/widgets/last_trip_item.dart';
 import 'package:mobile_frontend/models/last_trip.dart';
 import 'package:mobile_frontend/widgets/route_card.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class DriverHomeScreen extends StatelessWidget {
+
+class DriverHomeScreen extends StatefulWidget {
   const DriverHomeScreen({super.key});
+
+  @override
+  State<DriverHomeScreen> createState() => _DriverHomeScreenState();
+}
+
+class _DriverHomeScreenState extends State<DriverHomeScreen> {
+  String? firstName;
+
+   @override
+  void initState() {
+    super.initState();
+    getUserDetails();
+  }
+   Future<void> getUserDetails() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      firstName = prefs.getString('firstName') ?? 'Driver';
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +45,7 @@ class DriverHomeScreen extends StatelessWidget {
         address: '165/A8 Main Street, 11, Colombo',
       ),
     ];
-
+   
     return Scaffold(
       backgroundColor: primaryColor,
       body: SafeArea(
@@ -38,11 +59,11 @@ class DriverHomeScreen extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Column(
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Hi, Nalaka!",
+                         "Hi, ${firstName ?? '...'}!",
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,

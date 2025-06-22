@@ -13,4 +13,13 @@ class ApiService {
 
     return await http.post(url, headers: headers, body: body);
   }
+  static Future<http.Response> loginUser(Map<String, dynamic> loginData) async {
+    final url = Uri.parse('$baseUrl/login');
+    final headers = {
+      'Content-Type': 'application/json'
+    };
+    final body = jsonEncode(loginData);
+
+    return await http.post(url, headers: headers, body: body);
+  }
 }
