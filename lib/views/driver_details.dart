@@ -3,41 +3,72 @@ import 'package:mobile_frontend/config/constant.dart';
 import 'package:mobile_frontend/widgets/custom_button.dart';
 import 'package:mobile_frontend/widgets/custom_input_field.dart';
 import 'package:mobile_frontend/widgets/dropdown_input.dart';
+import 'package:mobile_frontend/services/auth_services.dart';
+
 
 class DriverDetailsScreen extends StatefulWidget {
-  const DriverDetailsScreen({super.key});
+  final Map<String, dynamic> userData;
+
+  const DriverDetailsScreen({super.key, required this.userData});
 
   @override
   State<DriverDetailsScreen> createState() => _DriverDetailsScreenState();
 }
 
 class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
-  // Controllers
-  final TextEditingController _firstNameController = TextEditingController();
-  final TextEditingController _lastNameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
-  
-  // Separate variables for each dropdown
+  final TextEditingController _vehicleModelController = TextEditingController();
+  final TextEditingController _vehicleRegistrationController = TextEditingController();
   String? _vehicleTypeValue;
   String? _vehicleBrandValue;
-  
-  // Counter for number of seats
   int _numberOfSeats = 2;
-  
-  
+
   @override
   void dispose() {
-    // Dispose controllers to prevent memory leaks
-    _firstNameController.dispose();
-    _lastNameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
+    _vehicleModelController.dispose();
+    _vehicleRegistrationController.dispose();
     super.dispose();
+  }
+
+  void _validateAndRegister() async {
+    if (_vehicleTypeValue == null ||
+        _vehicleBrandValue == null ||
+        _vehicleModelController.text.isEmpty ||
+        _vehicleRegistrationController.text.isEmpty ||
+        _numberOfSeats < 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all driver details')),
+      );
+      return;
+    }
+
+    final vehicleDetails = {
+      'vehicleType': _vehicleTypeValue,
+      'vehicleBrand': _vehicleBrandValue,
+      'vehicleModel': _vehicleModelController.text,
+      'vehicleRegistrationNumber': _vehicleRegistrationController.text,
+      'seatingCapacity': _numberOfSeats,
+    };
+
+    final registrationData = {
+      ...widget.userData,
+      'role': 'driver',
+      'vehicleDetails': vehicleDetails,
+    };
+
+    try {
+      final response = await ApiService.registerUser(registrationData);
+      if (response.statusCode == 201) {
+        Navigator.pushReplacementNamed(context, '/waiting');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Registration failed: ${response.body}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   @override
@@ -48,7 +79,6 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
       backgroundColor: primaryColor,
       body: Stack(
         children: [
-          // Back button (top left)
           Positioned(
             top: screenSize.height * 0.07,
             left: 10,
@@ -57,8 +87,6 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
               onPressed: () => Navigator.of(context).pop(),
             ),
           ),
-
-          // Center logo
           Positioned(
             top: screenSize.height * 0.05,
             left: 0,
@@ -68,23 +96,20 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
                 width: 100,
                 height: 80,
                 child: Image.asset(
-                  appLogo, 
-                  fit: BoxFit.contain, 
+                  appLogo,
+                  fit: BoxFit.contain,
                 ),
               ),
             ),
           ),
-
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
             child: Container(
               decoration: const BoxDecoration(
-                color: bgcolor, 
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(40),
-                ),
+                color: bgcolor,
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(40)),
               ),
               child: SingleChildScrollView(
                 padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
@@ -94,7 +119,6 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const SizedBox(height: 20),
-
                       const Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
@@ -108,8 +132,6 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
                         ),
                       ),
                       const SizedBox(height: 20),
-
-                      // Form fields with separate dropdown variables
                       CustomDropdownField(
                         label: 'Vehicle Type',
                         options: ['Sedan', 'SUV', 'Hatchback', 'Van', 'Truck'],
@@ -121,7 +143,6 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
                           });
                         },
                       ),
-
                       const SizedBox(height: 10),
                       CustomDropdownField(
                         label: 'Vehicle Brand',
@@ -134,26 +155,21 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
                           });
                         },
                       ),
-
                       const SizedBox(height: 10),
                       CustomInputField(
                         label: 'Vehicle Model',
-                        controller: _emailController,
+                        controller: _vehicleModelController,
                         hintText: 'Civic',
                         keyboardType: TextInputType.text,
                       ),
-
                       const SizedBox(height: 10),
                       CustomInputField(
                         label: 'Vehicle Registration Number',
-                        controller: _phoneController,
+                        controller: _vehicleRegistrationController,
                         hintText: 'CBL-8090',
                         keyboardType: TextInputType.text,
                       ),
-                      
                       const SizedBox(height: 20),
-                      
-                      // Number of seats counter
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -174,7 +190,6 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                // Number display
                                 Container(
                                   width: 60,
                                   height: 45,
@@ -184,15 +199,13 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
                                     style: const TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w500,
-                                      color: Colors.black
+                                      color: Colors.black,
                                     ),
                                   ),
                                 ),
-                                // Plus and minus buttons column
                                 Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    // Increase button
                                     InkWell(
                                       onTap: () {
                                         setState(() {
@@ -213,7 +226,6 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
                                         child: const Icon(Icons.add, size: 16),
                                       ),
                                     ),
-                                    // Decrease button
                                     InkWell(
                                       onTap: () {
                                         setState(() {
@@ -240,17 +252,11 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
                           ),
                         ],
                       ),
-                      
                       const SizedBox(height: 30),
-
                       CustomButton(
                         text: 'Complete Registration',
-                        onPressed: () {
-                          Navigator.of(context).pushReplacementNamed('/waiting');
-                        },
+                        onPressed: _validateAndRegister,
                       ),
-                      
-                      // Add extra space at the bottom
                       const SizedBox(height: 10),
                     ],
                   ),

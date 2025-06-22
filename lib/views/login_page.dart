@@ -4,6 +4,7 @@ import 'package:mobile_frontend/views/main_navigation.dart';
 import 'package:mobile_frontend/widgets/custom_input_field.dart';
 import 'package:mobile_frontend/widgets/custom_button.dart';
 
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 

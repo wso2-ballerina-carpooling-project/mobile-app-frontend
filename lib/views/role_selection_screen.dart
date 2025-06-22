@@ -1,130 +1,78 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/config/constant.dart';
 import 'package:mobile_frontend/widgets/custom_button.dart';
+import 'package:mobile_frontend/services/auth_services.dart';
 
-class RoleSelectionScreen extends StatefulWidget {
-  const RoleSelectionScreen({super.key});
+class RoleSelectionScreen extends StatelessWidget {
+  final Map<String, dynamic> userData;
 
-  @override
-  State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
-}
+  const RoleSelectionScreen({super.key, required this.userData});
 
-class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-
     return Scaffold(
-      backgroundColor: primaryColor, 
+      backgroundColor: primaryColor,
+      appBar: AppBar(
+        backgroundColor: primaryColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          'Select Role',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 30,
+            fontWeight: FontWeight.w300,
+          ),
+        ),
+        centerTitle: true,
+      ),
       body: Stack(
         children: [
-          Positioned(
-            top: 50,
-            left: 10,
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ),
-
-          Positioned(
-            top: screenSize.height * 0.20,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: SizedBox(
-                width: 140,
-                height: 120,
-                child: Image.asset(
-                  appLogo, 
-                  fit: BoxFit.contain, 
-                ),
-              ),
-            ),
-          ),
-
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
-            height: screenSize.height * 0.5, 
+            height: MediaQuery.of(context).size.height * 0.85,
             child: Container(
               decoration: const BoxDecoration(
-                color: bgcolor, 
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(40),
-                ),
+                color: bgcolor,
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(40)),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 20),
-
-                  
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "Choose Your Role",
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.normal,
-                          color: Colors.black87,
-                          fontFamily: 'Inter',
-                        ),
+                    const Text(
+                      'Are you a Driver or Passenger?',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
                       ),
                     ),
-                    const SizedBox(height: 70),
-
-                    // Driver Button
+                    const SizedBox(height: 40),
                     CustomButton(
-                      text: "Driver",
+                      text: 'Driver',
                       onPressed: () {
-                        Navigator.pushNamed(context, '/driverdetails');
+                        Navigator.pushNamed(
+                          context,
+                          '/driver-details',
+                          arguments: userData,
+                        );
                       },
                     ),
-                    const SizedBox(height: 30),
-
-                    // Passenger Button
+                    const SizedBox(height: 20),
                     CustomButton(
-                      text: "Passenger",
+                      text: 'Passenger',
                       onPressed: () {
-                        Navigator.pushNamed(context, '/waiting');
+                        // Send data to backend for passenger
+                        _registerUser(context, {...userData, 'role': 'passenger'});
                       },
                     ),
-                    const Spacer(),
-
-                    // Already have an account? Sign In
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Already have an account? ',
-                          style: TextStyle(
-                            color: Colors.black87,
-                            fontSize: 14,
-                            fontFamily: 'Inter',
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.of(context)
-                                .pushReplacementNamed('/login');
-                          },
-                          child: const Text(
-                            'Sign In',
-                            style: TextStyle(
-                              color: linkColor,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
                   ],
                 ),
               ),
@@ -133,5 +81,22 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _registerUser(BuildContext context, Map<String, dynamic> data) async {
+    try {
+      final response = await ApiService.registerUser(data);
+      if (response.statusCode == 201) {
+        Navigator.pushReplacementNamed(context, '/waiting');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Registration failed: ${response.body}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 }

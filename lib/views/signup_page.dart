@@ -11,14 +11,12 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
-  // Controllers for form fields
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
   bool _agreedToTerms = false;
 
@@ -33,13 +31,65 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
+  void _validateAndProceed() {
+    if (!_agreedToTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red,
+          content: const Text(
+            'Please agree to the terms and conditions',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          elevation: 10,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Passwords do not match')),
+      );
+      return;
+    }
+
+    if (_firstNameController.text.isEmpty ||
+        _lastNameController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _phoneController.text.isEmpty ||
+        _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all fields')),
+      );
+      return;
+    }
+
+    // Collect user data
+    final userData = {
+      'firstName': _firstNameController.text,
+      'lastName': _lastNameController.text,
+      'email': _emailController.text,
+      'phone': _phoneController.text,
+      'password': _passwordController.text,
+    };
+
+    // Navigate to RoleSelectionScreen
+    Navigator.pushNamed(context, '/role', arguments: userData);
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor:
-          primaryColor, 
+      backgroundColor: primaryColor,
       appBar: AppBar(
         backgroundColor: primaryColor,
         elevation: 0,
@@ -59,12 +109,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ),
       body: Stack(
         children: [
-          // White container positioned from the bottom
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
-            height: screenSize.height * 0.85, 
+            height: screenSize.height * 0.85,
             child: Container(
               decoration: const BoxDecoration(
                 color: bgcolor,
@@ -76,20 +125,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Form fields
                       CustomInputField(
                         label: 'First name',
                         controller: _firstNameController,
                         hintText: 'John',
                       ),
-
                       const SizedBox(height: 10),
                       CustomInputField(
                         label: 'Last name',
                         controller: _lastNameController,
                         hintText: 'Wick',
                       ),
-
                       const SizedBox(height: 10),
                       CustomInputField(
                         label: 'Email',
@@ -97,7 +143,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         hintText: 'username@web02.com',
                         keyboardType: TextInputType.emailAddress,
                       ),
-
                       const SizedBox(height: 10),
                       CustomInputField(
                         label: 'Phone',
@@ -105,7 +150,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         hintText: '071 929 7961',
                         keyboardType: TextInputType.phone,
                       ),
-
                       const SizedBox(height: 10),
                       CustomInputField(
                         label: 'Password',
@@ -113,7 +157,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         isPassword: true,
                         hintText: '••••••••••••••••••',
                       ),
-
                       const SizedBox(height: 10),
                       CustomInputField(
                         label: 'Confirm password',
@@ -121,8 +164,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         isPassword: true,
                         hintText: '••••••••••••••••••',
                       ),
-
-                      // Terms and conditions checkbox
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 16.0),
                         child: Row(
@@ -134,14 +175,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   _agreedToTerms = value ?? false;
                                 });
                               },
-                              fillColor: WidgetStateProperty.resolveWith<
-                                Color
-                              >((Set<WidgetState> states) {
-                                if (states.contains(WidgetState.selected)) {
-                                  return Colors.blue;
-                                }
-                                return Colors.grey;
-                              }),
+                              fillColor: WidgetStateProperty.resolveWith<Color>(
+                                (Set<WidgetState> states) {
+                                  if (states.contains(WidgetState.selected)) {
+                                    return Colors.blue;
+                                  }
+                                  return Colors.grey;
+                                },
+                              ),
                             ),
                             const Text(
                               'I agree term and condition',
@@ -153,46 +194,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           ],
                         ),
                       ),
-
-                      // Sign Up button
                       CustomButton(
                         text: 'Sign Up',
-                        onPressed: () {
-                           Navigator.of(
-                                  context,
-                                ).pushReplacementNamed('/role');
-                          if (_agreedToTerms) {
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                backgroundColor:
-                                    Colors
-                                        .red,
-                                content: Text(
-                                  'Please agree to the terms and conditions',
-                                  style: TextStyle(
-                                    color: Colors.white, 
-                                    fontSize: 16, 
-                                    fontWeight: FontWeight.bold, 
-                                  ),
-                                ),
-                                behavior:
-                                    SnackBarBehavior
-                                        .floating, 
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                elevation: 10, 
-                                duration: Duration(
-                                  seconds: 3,
-                                ), 
-                              ),
-                            );
-                          }
-                        },
+                        onPressed: _validateAndProceed,
                       ),
-
-                      // Already have an account link
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 16.0),
                         child: Row(
@@ -207,9 +212,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                             GestureDetector(
                               onTap: () {
-                                Navigator.of(
-                                  context,
-                                ).pushReplacementNamed('/login');
+                                Navigator.pushReplacementNamed(context, '/login');
                               },
                               child: const Text(
                                 'Sign in here',
