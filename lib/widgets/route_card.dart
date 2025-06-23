@@ -72,7 +72,7 @@ class RouteCard extends StatelessWidget {
                   ),
                   Container(
                     width: 2,
-                    height: 30,
+                    height: 15,
                     color: Colors.grey.shade300,
                   ),
                   Text(
@@ -84,7 +84,7 @@ class RouteCard extends StatelessWidget {
                   ),
                   Container(
                     width: 2,
-                    height: 30,
+                    height: 15,
                     color: Colors.grey.shade300,
                   ),
                   Container(
@@ -95,7 +95,7 @@ class RouteCard extends StatelessWidget {
                       shape: BoxShape.rectangle,
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 3),
                   Text(
                     endTime,
                     style: const TextStyle(
@@ -107,7 +107,7 @@ class RouteCard extends StatelessWidget {
                 ],
               ),
               
-              const SizedBox(width: 30),
+              const SizedBox(width: 15),
               
               // Middle section with locations
               Expanded(
@@ -139,7 +139,7 @@ class RouteCard extends StatelessWidget {
                         fontSize: 14,
                       ),
                     ),
-                    const SizedBox(height: 70),
+                    const SizedBox(height: 40),
                     Text(
                       endLocation,
                       style: const TextStyle(
@@ -175,6 +175,7 @@ class RouteCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
+  
                   children: [
                     const Icon(Icons.airline_seat_recline_normal, size: 16, color: companyColor),
                     const SizedBox(width: 5),
@@ -203,13 +204,14 @@ class RouteCard extends StatelessWidget {
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: mainButtonColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 6),
+                  
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
                 onPressed: onStartPressed,
-                child: const Text('Start', style: TextStyle(color: Colors.white, fontSize: 16)),
+                child: const Text('Start', style: TextStyle(color: Colors.white, fontSize: 13)),
               ),
             ],
           ),

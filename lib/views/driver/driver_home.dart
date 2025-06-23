@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
+import 'package:jwt_decode/jwt_decode.dart';
 import 'package:mobile_frontend/config/constant.dart';
+import 'package:mobile_frontend/models/RideData.dart';
 import 'package:mobile_frontend/views/driver/post_a_ride.dart';
 import 'package:mobile_frontend/widgets/last_trip_item.dart';
 import 'package:mobile_frontend/models/last_trip.dart';
 import 'package:mobile_frontend/widgets/route_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'dart:convert';
 
 class DriverHomeScreen extends StatefulWidget {
   const DriverHomeScreen({super.key});
@@ -16,17 +20,70 @@ class DriverHomeScreen extends StatefulWidget {
 
 class _DriverHomeScreenState extends State<DriverHomeScreen> {
   String? firstName;
+  List<Ride> rides = [];
+  bool isLoading = true;
+  final _storage = FlutterSecureStorage();
 
-   @override
+  @override
   void initState() {
     super.initState();
     getUserDetails();
+    fetchRides();
   }
-   Future<void> getUserDetails() async {
+
+  Future<void> getUserDetails() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       firstName = prefs.getString('firstName') ?? 'Driver';
     });
+  }
+
+  Future<void> fetchRides() async {
+    try {
+      // Retrieve JWT token
+      String? token = await _storage.read(key: 'jwt_token');
+      if (token == null) {
+        setState(() {
+          isLoading = false;
+        });
+        return;
+      }
+
+      // Decode JWT to get seating capacity
+      Map<String, dynamic> payload = Jwt.parseJwt(token);
+      int seatingCapacity = int.parse(
+        payload['driverDetails']['seatingCapacity'].toString(),
+      );
+
+      // Make API call
+      final response = await http.post(
+        Uri.parse('http://192.168.234.103:9090/api/getRide'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      print(response);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> rideList = data['rides'];
+        setState(() {
+          rides = rideList
+              .map((rideJson) => Ride.fromJson(rideJson, seatingCapacity))
+              .where((ride) => ride.status == 'active')
+              .toList();
+          isLoading = false;
+        });
+      } else {
+        print('Failed to fetch rides: ${response.statusCode}');
+        setState(() {
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching rides: $e');
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   @override
@@ -45,7 +102,9 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         address: '165/A8 Main Street, 11, Colombo',
       ),
     ];
-   
+
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
       backgroundColor: primaryColor,
       body: SafeArea(
@@ -63,7 +122,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                         "Hi, ${firstName ?? '...'}!",
+                        "Hi, ${firstName ?? '...'}!",
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -120,22 +179,40 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                         ),
                       ),
                       const SizedBox(height: 15),
-                      RouteCard(
-                        startTime: "08:00",
-                        endTime: "09:10",
-                        duration: "1h 10min(est)",
-                        startLocation: "Moratuwa",
-                        startAddress: "Bandaranayake Road",
-                        endLocation: "WSO2",
-                        endAddress: "Bandaranayake Road",
-                        seatInfo: "2/4",
-                        price: "Rs.1200",
-                        onStartPressed: () {
-                          Navigator.of(
-                            context,
-                          ).pushReplacementNamed('/rideStart');
-                        },
-                      ),
+                      isLoading
+                          ? Center(child: CircularProgressIndicator())
+                          : rides.isEmpty
+                              ? Center(child: Text('No active rides found'))
+                              : SizedBox(
+                                  height: 260, // Adjust height based on RouteCard size
+                                  child: ListView.builder(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: rides.length,
+                                    itemBuilder: (context, index) {
+                                      final ride = rides[index];
+                                      return Padding(
+                                        padding: const EdgeInsets.only(right: 15.0),
+                                        child: SizedBox(
+                                          width: screenWidth * 0.8, // 80% of screen width per card
+                                          child: RouteCard(
+                                            startTime: ride.startTime,
+                                            endTime: ride.returnTime,
+                                            duration: ride.duration,
+                                            startLocation: ride.pickupLocation.split(',')[0],
+                                            startAddress: ride.pickupLocation,
+                                            endLocation: ride.dropoffLocation.split(',')[0],
+                                            endAddress: ride.dropoffLocation,
+                                            seatInfo: '${ride.passengerCount}/${ride.seatingCapacity}',
+                                            price: 'Rs.${(ride.passengerCount * 600).toString()}', // Placeholder pricing
+                                            onStartPressed: () {
+                                              Navigator.of(context).pushReplacementNamed('/rideStart');
+                                            },
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
                       const SizedBox(height: 30),
                       const Text(
                         "Your last trip",
@@ -152,10 +229,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                         height: 1.0,
                       ),
                       Column(
-                        children:
-                            lastTrips
-                                .map((trip) => LastTripItem(trip: trip))
-                                .toList(),
+                        children: lastTrips.map((trip) => LastTripItem(trip: trip)).toList(),
                       ),
                     ],
                   ),
