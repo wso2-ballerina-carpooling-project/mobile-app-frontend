@@ -19,6 +19,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
   final _storage = FlutterSecureStorage();
   bool _isLoading = false;
 
@@ -30,9 +31,9 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _handleLogin() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
+        const SnackBar(content: Text('Please fix the errors in the form')),
       );
       return;
     }
@@ -67,8 +68,11 @@ class _LoginPageState extends State<LoginPage> {
         final userRole = decodedToken['role'];
         final firstName = decodedToken['firstName'];
         final lastName = decodedToken['lastName'];
+        final id = decodedToken['id'];
+        await prefs.setString('firstName', firstName);
         await prefs.setString('firstName', firstName);
         await prefs.setString('lastName', lastName);
+        await prefs.setString('id', id);
         if (decodedToken['status'] == 'pending' && userRole != 'admin') {
           Navigator.pushReplacementNamed(context, '/waiting');
         } else {
@@ -101,114 +105,142 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: primaryColor,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: Center(
-                    child: SizedBox(
-                      width: 140,
-                      height: 120,
-                      child: Image.asset(appLogo, fit: BoxFit.cover),
+      resizeToAvoidBottomInset: true,
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Center(
+                      child: SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.35,
+                        height: MediaQuery.of(context).size.height * 0.15,
+                        child: Image.asset(appLogo, fit: BoxFit.cover),
+                      ),
                     ),
                   ),
-                ),
-                Expanded(
-                  flex: 4,
-                  child: Container(
-                    width: double.infinity,
-                    decoration: const BoxDecoration(
-                      color: bgcolor,
-                      borderRadius: BorderRadius.only(topLeft: Radius.circular(40)),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 20),
-                          const Center(
-                            child: Text(
-                              "Login",
-                              style: TextStyle(
-                                fontSize: 40,
-                                color: Colors.black,
-                                fontWeight: FontWeight.normal,
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 30),
-                          CustomInputField(
-                            label: "Email",
-                            controller: _emailController,
-                            hintText: "username@ws02.com",
-                            keyboardType: TextInputType.emailAddress,
-                          ),
-                          const SizedBox(height: 16),
-                          CustomInputField(
-                            label: "Password",
-                            controller: _passwordController,
-                            isPassword: true,
-                            hintText: "••••••••••••••••",
-                          ),
-                          const SizedBox(height: 40),
-                          CustomButton(
-                            text: _isLoading ? "Logging in..." : "Login",
-                            onPressed: _isLoading ? null : _handleLogin,
-                          ),
-                          const Spacer(),
-                          Center(
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 16.0),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Text(
-                                    "Didn't have an account? ",
-                                    style: TextStyle(
-                                      color: Colors.black87,
-                                      fontSize: 14,
-                                    ),
+                  Expanded(
+                    flex: 4,
+                    child: Container(
+                      width: double.infinity,
+                      decoration: const BoxDecoration(
+                        color: bgcolor,
+                        borderRadius: BorderRadius.only(topLeft: Radius.circular(40)),
+                      ),
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.06),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(height: MediaQuery.of(context).size.height * 0.015),
+                              const Center(
+                                child: Text(
+                                  "Login",
+                                  style: TextStyle(
+                                    fontSize: 32,
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.normal,
+                                    fontFamily: 'Inter',
                                   ),
-                                  GestureDetector(
-                                    onTap: () {
-                                      Navigator.pushReplacementNamed(context, '/signup');
-                                    },
-                                    child: const Text(
-                                      'Sign Up here',
+                                ),
+                              ),
+                              SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+                              CustomInputField(
+                                label: "Email",
+                                controller: _emailController,
+                                hintText: "username@ws02.com",
+                                keyboardType: TextInputType.emailAddress,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter your email';
+                                  }
+                                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                                    return 'Please enter a valid email';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              SizedBox(height: MediaQuery.of(context).size.height * 0.015),
+                              CustomInputField(
+                                label: "Password",
+                                controller: _passwordController,
+                                isPassword: true,
+                                hintText: "••••••••••••••••",
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter your password';
+                                  }
+                                  if (value.length < 6) {
+                                    return 'Password must be at least 6 characters';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              SizedBox(height: MediaQuery.of(context).size.height * 0.025),
+                              CustomButton(
+                                text: _isLoading ? "Logging in..." : "Login",
+                                onPressed: _isLoading ? null : _handleLogin,
+                                useGradient: false,
+                                gradientColors: [mainButtonColor, primaryColor],
+                              ),
+                              SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+                              Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Text(
+                                      "Didn't have an account? ",
                                       style: TextStyle(
-                                        color: linkColor,
+                                        color: Colors.black87,
                                         fontSize: 14,
-                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                  ),
-                                ],
+                                    GestureDetector(
+                                      onTap: () {
+                                        Navigator.pushReplacementNamed(context, '/signup');
+                                      },
+                                      child: const Text(
+                                        'Sign Up here',
+                                        style: TextStyle(
+                                          color: linkColor,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
+                              SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+                            ],
                           ),
-                        ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (_isLoading)
+                Container(
+                  color: primaryColor.withOpacity(0.8),
+                  child: Center(
+                    child: Semantics(
+                      label: 'Loading, please wait',
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(mainButtonColor),
+                        strokeWidth: 4,
                       ),
                     ),
                   ),
                 ),
-              ],
-            ),
-            if (_isLoading)
-              Container(
-                color: primaryColor.withOpacity(0.8),
-                child: Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(mainButtonColor),
-                    strokeWidth: 4,
-                  ),
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

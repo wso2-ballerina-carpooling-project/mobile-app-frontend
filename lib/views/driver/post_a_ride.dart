@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile_frontend/services/map_services.dart';
+import 'package:mobile_frontend/services/ride_services.dart';
 import 'package:mobile_frontend/widgets/custom_input_field.dart';
 import 'package:mobile_frontend/widgets/custom_button.dart';
 import 'package:mobile_frontend/widgets/dropdown_input.dart';
@@ -26,6 +28,8 @@ class _RidePostScreenState extends State<RidePostScreen> {
   final TextEditingController dateController = TextEditingController();
   final TextEditingController vehicleRegController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  final _storage = FlutterSecureStorage(); // For JWT token
+  bool _isPosting = false;
 
   // Place search controllers
   final FocusNode pickUpFocusNode = FocusNode();
@@ -373,42 +377,39 @@ class _RidePostScreenState extends State<RidePostScreen> {
   }
 
   // Search for Sri Lankan places
-  // Future<List<Map<String, dynamic>>> searchSriLankaPlaces(String query) async {
-  //   if (query.length < 3) return [];
+  Future<List<Map<String, dynamic>>> searchSriLankaPlaces(String query) async {
+    if (query.length < 3) return [];
 
-  //   const apiKey =
-  //       'AIzaSyBJToHkeu0EhfzRM64HXhCg2lil_Kg9pSE'; // Replace with your actual API key
-  //   final url = Uri.parse(
-  //     'https://maps.googleapis.com/maps/api/place/autocomplete/json?'
-  //     'input=$query' // This restricts results to Sri Lanka using country code
-  //     '&components=country:lk'
-  //     '&key=$apiKey',
-  //   );
+    const apiKey =
+        'AIzaSyBJToHkeu0EhfzRM64HXhCg2lil_Kg9pSE'; // Replace with your actual API key
+    final url = Uri.parse(
+      'https://maps.googleapis.com/maps/api/place/autocomplete/json?'
+      'input=$query' // This restricts results to Sri Lanka using country code
+      '&components=country:lk'
+      '&key=$apiKey',
+    );
 
-  //   try {
-  //     final response = await http.get(url);
-  //     if (response.statusCode == 200) {
-  //       final data = json.decode(response.body);
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
 
-  //       if (data['status'] == 'OK') {
-  //         final predictions = data['predictions'] as List;
-  //         return predictions.map((prediction) {
-  //           return {
-  //             'description': prediction['description'],
-  //             'place_id': prediction['place_id'],
-  //           };
-  //         }).toList();
-  //       }
-  //     }
-  //     return [];
-  //   } catch (e) {
-  //     print('Error searching places: $e');
-  //     return [];
-  //   }
-  // }
-
-
-
+        if (data['status'] == 'OK') {
+          final predictions = data['predictions'] as List;
+          return predictions.map((prediction) {
+            return {
+              'description': prediction['description'],
+              'place_id': prediction['place_id'],
+            };
+          }).toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      print('Error searching places: $e');
+      return [];
+    }
+  }
 
   // Get place details by place ID
   Future<LatLng?> getPlaceDetails(String placeId) async {
@@ -435,6 +436,85 @@ class _RidePostScreenState extends State<RidePostScreen> {
     } catch (e) {
       print('Error getting place details: $e');
       return null;
+    }
+  }
+
+  Future<void> _postRide() async {
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all required fields')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isPosting = true;
+    });
+
+    try {
+      // Retrieve JWT token
+      final token = await _storage.read(key: 'jwt_token');
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      // Prepare route data
+      final routeData =
+          selectedRouteIndex < routeOptions.length
+              ? {
+                'index': selectedRouteIndex,
+                'duration': routeDurations[selectedRouteIndex],
+                'distance': routeDistances[selectedRouteIndex],
+                'polyline':
+                    routeOptions[selectedRouteIndex]
+                        .map(
+                          (point) => {
+                            'latitude': point.latitude,
+                            'longitude': point.longitude,
+                          },
+                        )
+                        .toList(),
+              }
+              : null;
+
+      // Prepare ride data
+      final rideData = {
+        'pickupLocation': pickUpController.text,
+        'dropoffLocation': dropOffController.text,
+        'date': dateController.text,
+        'startTime': selectedTime ?? '',
+        'returnTime': selectedReturnTime ?? '',
+        'vehicleRegNo': vehicleRegController.text,
+        'route': routeData,
+      };
+
+      // Send POST request
+      final response = await RideService.postRide(rideData, token);
+
+      print(response.body);
+      setState(() {
+        _isPosting = false;
+      });
+
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ride posted successfully')),
+        );
+        Navigator.pop(context); // Navigate back on success
+      } else {
+        final errorMessage =
+            jsonDecode(response.body)['message'] ?? 'Failed to post ride';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
+      }
+    } catch (e) {
+      setState(() {
+        // _isLoading = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error posting ride: $e')));
     }
   }
 
@@ -567,7 +647,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                             ),
                                           ),
                                       suggestionsCallback: (pattern) async {
-                                        return await MapServices.searchSriLankaPlaces(
+                                        return await searchSriLankaPlaces(
                                           pattern,
                                         );
                                       },
@@ -630,7 +710,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                             ),
                                           ),
                                       suggestionsCallback: (pattern) async {
-                                        return await MapServices.searchSriLankaPlaces(
+                                        return await searchSriLankaPlaces(
                                           pattern,
                                         );
                                       },
@@ -696,7 +776,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                           ) {
                                             mapController = controller;
                                           },
-                                          zoomControlsEnabled: false,
+                                          zoomControlsEnabled: true,
                                           mapToolbarEnabled: false,
                                           myLocationButtonEnabled: false,
                                         ),
@@ -964,35 +1044,36 @@ class _RidePostScreenState extends State<RidePostScreen> {
                               // Post Ride Button
                               CustomButton(
                                 text: 'Post Ride',
-                                onPressed: () {
-                                  if (_formKey.currentState?.validate() ??
-                                      false) {
-                                    // Get the selected route data
-                                    String routeInfo = '';
-                                    if (selectedRouteIndex <
-                                        routeDurations.length) {
-                                      routeInfo =
-                                          'Route ${selectedRouteIndex + 1}: ${routeDurations[selectedRouteIndex]}, ${routeDistances[selectedRouteIndex]}';
-                                    }
+                                onPressed: _postRide,
+                                // () {
+                                // if (_formKey.currentState?.validate() ??
+                                //     false) {
+                                //   // Get the selected route data
+                                //   String routeInfo = '';
+                                //   if (selectedRouteIndex <
+                                //       routeDurations.length) {
+                                //     routeInfo =
+                                //         'Route ${selectedRouteIndex + 1}: ${routeOptions[selectedRouteIndex]}, ${routeDistances[selectedRouteIndex]}';
+                                //   }
 
-                                    print('Posting ride...');
-                                    print('Pick-Up: ${pickUpController.text}');
-                                    print(
-                                      'Drop-Off: ${dropOffController.text}',
-                                    );
-                                    print('Date: ${dateController.text}');
-                                    print('Time selected: $selectedTime');
-                                    print('Return Time: $selectedReturnTime');
-                                    print(
-                                      'Vehicle Reg: ${vehicleRegController.text}',
-                                    );
-                                    print('Selected Route: $routeInfo');
-                                  } else {
-                                    print(
-                                      'Please fill in all required fields.',
-                                    );
-                                  }
-                                },
+                                //   print('Posting ride...');
+                                //   print('Pick-Up: ${pickUpController.text}');
+                                //   print(
+                                //     'Drop-Off: ${dropOffController.text}',
+                                //   );
+                                //   print('Date: ${dateController.text}');
+                                //   print('Time selected: $selectedTime');
+                                //   print('Return Time: $selectedReturnTime');
+                                //   print(
+                                //     'Vehicle Reg: ${vehicleRegController.text}',
+                                //   );
+                                //   print('Selected Route: $routeInfo');
+                                // } else {
+                                //   print(
+                                //     'Please fill in all required fields.',
+                                //   );
+                                // }
+                                // },
                               ),
                             ],
                           ),
