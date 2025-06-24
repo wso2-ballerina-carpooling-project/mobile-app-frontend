@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:mobile_frontend/services/map_services.dart';
 import 'package:mobile_frontend/services/ride_services.dart';
 import 'package:mobile_frontend/widgets/custom_input_field.dart';
 import 'package:mobile_frontend/widgets/custom_button.dart';
@@ -28,7 +27,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
   final TextEditingController dateController = TextEditingController();
   final TextEditingController vehicleRegController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  final _storage = FlutterSecureStorage(); // For JWT token
+  final _storage = FlutterSecureStorage();
   bool _isPosting = false;
 
   // Place search controllers
@@ -38,7 +37,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
   // Google Maps Controller
   GoogleMapController? mapController;
   CameraPosition initialCameraPosition = const CameraPosition(
-    target: LatLng(0, 0), // Will be updated with user's location
+    target: LatLng(6.7734, 79.8825), // WSO2 coordinates
     zoom: 14.0,
   );
 
@@ -54,46 +53,46 @@ class _RidePostScreenState extends State<RidePostScreen> {
   List<String> routeDurations = [];
   List<String> routeDistances = [];
 
+  // WSO2 specific variables
+  final String wso2Address = "WSO2, Bauddhaloka Mawatha, Colombo, Sri Lanka";
+  final LatLng wso2Coordinates = const LatLng(
+    6.8953284,
+    79.8546711,
+  ); // WSO2 coordinates
+  bool isWSO2Start = false;
+
   @override
   void initState() {
     super.initState();
     _determinePosition();
-    // Load the routes automatically after a brief delay to allow the screen to initialize
     Future.delayed(const Duration(milliseconds: 500), () {
       _showRoutes();
     });
   }
 
-  // Set initial map position to show Sri Lanka
   Future<void> _determinePosition() async {
-    // Use Moratuwa coordinates for initial position
     setState(() {
-      initialCameraPosition = const CameraPosition(
-        target: LatLng(6.7734, 79.8825), // Moratuwa
-        zoom: 12.0,
-      );
-
-      // Pre-fill pickup location
-      pickUpController.text = "Moratuwa, Sri Lanka";
+      pickUpController.text = wso2Address;
       dropOffController.text = "Pettah, Colombo, Sri Lanka";
+      isWSO2Start = true;
     });
   }
 
-  // Get address from coordinates
   Future<void> _getAddressFromLatLng(double lat, double lng) async {
     try {
       List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng);
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks[0];
         String address = '${place.street}, ${place.locality}';
-        pickUpController.text = address;
+        if (!isWSO2Start) {
+          pickUpController.text = address;
+        }
       }
     } catch (e) {
       print('Error getting address: $e');
     }
   }
 
-  // Get coordinates from address
   Future<LatLng?> _getCoordinatesFromAddress(String address) async {
     try {
       List<Location> locations = await locationFromAddress(address);
@@ -106,11 +105,9 @@ class _RidePostScreenState extends State<RidePostScreen> {
     return null;
   }
 
-  // Store selected place IDs
   String? pickUpPlaceId;
   String? dropOffPlaceId;
 
-  // Show routes on map
   Future<void> _showRoutes() async {
     setState(() {
       isLoading = true;
@@ -121,7 +118,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
       LatLng? originLatLng;
       LatLng? destLatLng;
 
-      // Try to get coordinates from place IDs first if available
       if (pickUpPlaceId != null) {
         originLatLng = await getPlaceDetails(pickUpPlaceId!);
       }
@@ -130,17 +126,15 @@ class _RidePostScreenState extends State<RidePostScreen> {
         destLatLng = await getPlaceDetails(dropOffPlaceId!);
       }
 
-      // Fall back to hardcoded coordinates or geocoding
       if (originLatLng == null) {
-        if (pickUpController.text.isEmpty) {
-          // Default to Moratuwa if empty
-          originLatLng = const LatLng(6.7734, 79.8825);
-          pickUpController.text = "Moratuwa, Sri Lanka";
+        if (pickUpController.text.isEmpty ||
+            pickUpController.text == wso2Address) {
+          originLatLng = wso2Coordinates;
+          pickUpController.text = wso2Address;
         } else {
-          // Try geocoding the address
           try {
             List<Location> locations = await locationFromAddress(
-              "${pickUpController.text}, Sri Lanka", // Append Sri Lanka to focus search
+              "${pickUpController.text}, Sri Lanka",
             );
             if (locations.isNotEmpty) {
               originLatLng = LatLng(
@@ -148,25 +142,22 @@ class _RidePostScreenState extends State<RidePostScreen> {
                 locations[0].longitude,
               );
             } else {
-              // Default to Moratuwa if geocoding fails
-              originLatLng = const LatLng(6.7734, 79.8825);
+              originLatLng = wso2Coordinates;
             }
           } catch (e) {
-            originLatLng = const LatLng(6.7734, 79.8825);
+            originLatLng = wso2Coordinates;
           }
         }
       }
 
       if (destLatLng == null) {
-        if (dropOffController.text.isEmpty) {
-          // Default to Pettah if empty
-          destLatLng = const LatLng(6.9344, 79.8428);
-          dropOffController.text = "Pettah, Colombo, Sri Lanka";
+        if (dropOffController.text.isEmpty || !isWSO2Start) {
+          destLatLng = wso2Coordinates;
+          dropOffController.text = wso2Address;
         } else {
-          // Try geocoding the address
           try {
             List<Location> locations = await locationFromAddress(
-              "${dropOffController.text}, Sri Lanka", // Append Sri Lanka to focus search
+              "${dropOffController.text}, Sri Lanka",
             );
             if (locations.isNotEmpty) {
               destLatLng = LatLng(
@@ -174,7 +165,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
                 locations[0].longitude,
               );
             } else {
-              // Default to Pettah if geocoding fails
               destLatLng = const LatLng(6.9344, 79.8428);
             }
           } catch (e) {
@@ -183,7 +173,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
         }
       }
 
-      // Set the camera position to show both markers
       LatLngBounds bounds = LatLngBounds(
         southwest: LatLng(
           originLatLng.latitude < destLatLng.latitude
@@ -208,7 +197,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
       LatLng originLatLngMark = originLatLng;
       LatLng desLat = destLatLng;
 
-      // Add markers
       setState(() {
         markers = {
           Marker(
@@ -235,7 +223,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
           ),
         };
 
-        // Animate camera to show both markers
         mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
       });
     } catch (e) {
@@ -250,10 +237,8 @@ class _RidePostScreenState extends State<RidePostScreen> {
     }
   }
 
-  // Get directions from Google Directions API
   Future<void> _getDirections(LatLng origin, LatLng destination) async {
-    const apiKey =
-        'AIzaSyC8GlueGNwtpZjPUjF6SWnxUHyC5GA82KE'; // Replace with your actual API key
+    const apiKey = 'AIzaSyC8GlueGNwtpZjPUjF6SWnxUHyC5GA82KE';
     final url = Uri.parse(
       'https://maps.googleapis.com/maps/api/directions/json?'
       'origin=${origin.latitude},${origin.longitude}'
@@ -270,7 +255,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
         if (data['status'] == 'OK') {
           final routes = data['routes'] as List;
 
-          // Clear previous routes
           setState(() {
             polylines.clear();
             routeOptions.clear();
@@ -278,19 +262,15 @@ class _RidePostScreenState extends State<RidePostScreen> {
             routeDistances.clear();
           });
 
-          // Process each route
           for (int i = 0; i < routes.length; i++) {
             final route = routes[i];
             final legs = route['legs'][0];
-            final steps = legs['steps'] as List;
             final String duration = legs['duration']['text'];
             final String distance = legs['distance']['text'];
 
-            // Store route info
             routeDurations.add(duration);
             routeDistances.add(distance);
 
-            // Decode polyline
             final points = route['overview_polyline']['points'];
             final polylinePoints = PolylinePoints().decodePolyline(points);
             List<LatLng> polylineCoordinates = [];
@@ -314,7 +294,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
             });
           }
 
-          // If no routes were selected, select the first one
           if (selectedRouteIndex >= routeOptions.length) {
             selectedRouteIndex = 0;
           }
@@ -332,12 +311,10 @@ class _RidePostScreenState extends State<RidePostScreen> {
     }
   }
 
-  // Select a route
   void _selectRoute(int index) {
     setState(() {
       selectedRouteIndex = index;
 
-      // Update polyline colors
       for (int i = 0; i < routeOptions.length; i++) {
         final PolylineId polylineId = PolylineId('route$i');
         final Polyline currentPolyline = polylines[polylineId]!;
@@ -376,15 +353,13 @@ class _RidePostScreenState extends State<RidePostScreen> {
     super.dispose();
   }
 
-  // Search for Sri Lankan places
   Future<List<Map<String, dynamic>>> searchSriLankaPlaces(String query) async {
     if (query.length < 3) return [];
 
-    const apiKey =
-        'AIzaSyBJToHkeu0EhfzRM64HXhCg2lil_Kg9pSE'; // Replace with your actual API key
+    const apiKey = 'AIzaSyBJToHkeu0EhfzRM64HXhCg2lil_Kg9pSE';
     final url = Uri.parse(
       'https://maps.googleapis.com/maps/api/place/autocomplete/json?'
-      'input=$query' // This restricts results to Sri Lanka using country code
+      'input=$query'
       '&components=country:lk'
       '&key=$apiKey',
     );
@@ -411,10 +386,8 @@ class _RidePostScreenState extends State<RidePostScreen> {
     }
   }
 
-  // Get place details by place ID
   Future<LatLng?> getPlaceDetails(String placeId) async {
-    const apiKey =
-        'AIzaSyC8GlueGNwtpZjPUjF6SWnxUHyC5GA82KE'; // Replace with your actual API key
+    const apiKey = 'AIzaSyC8GlueGNwtpZjPUjF6SWnxUHyC5GA82KE';
     final url = Uri.parse(
       'https://maps.googleapis.com/maps/api/place/details/json?'
       'place_id=$placeId'
@@ -452,13 +425,15 @@ class _RidePostScreenState extends State<RidePostScreen> {
     });
 
     try {
-      // Retrieve JWT token
       final token = await _storage.read(key: 'jwt_token');
       if (token == null) {
         throw Exception('No authentication token found');
       }
-
-      // Prepare route data
+      bool waytowork = true;
+      if (pickUpController.text ==
+          "WSO2, Bauddhaloka Mawatha, Colombo, Sri Lanka") {
+        waytowork = false;
+      }
       final routeData =
           selectedRouteIndex < routeOptions.length
               ? {
@@ -477,18 +452,15 @@ class _RidePostScreenState extends State<RidePostScreen> {
               }
               : null;
 
-      // Prepare ride data
       final rideData = {
-        'pickupLocation': pickUpController.text,
-        'dropoffLocation': dropOffController.text,
+        'startLocation': pickUpController.text,
+        'endLocation': dropOffController.text,
+        'waytowork' : waytowork,
         'date': dateController.text,
-        'startTime': selectedTime ?? '',
-        'returnTime': selectedReturnTime ?? '',
-        'vehicleRegNo': vehicleRegController.text,
+        'time': selectedTime ?? '',
         'route': routeData,
       };
 
-      // Send POST request
       final response = await RideService.postRide(rideData, token);
 
       print(response.body);
@@ -500,7 +472,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Ride posted successfully')),
         );
-        Navigator.pop(context); // Navigate back on success
+        Navigator.pop(context);
       } else {
         final errorMessage =
             jsonDecode(response.body)['message'] ?? 'Failed to post ride';
@@ -510,7 +482,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
       }
     } catch (e) {
       setState(() {
-        // _isLoading = false;
+        _isPosting = false;
       });
       ScaffoldMessenger.of(
         context,
@@ -527,7 +499,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
           key: _formKey,
           child: Column(
             children: [
-              // Header
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12.0,
@@ -560,8 +531,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
                   ],
                 ),
               ),
-
-              // Body
               Expanded(
                 child: SingleChildScrollView(
                   child: Padding(
@@ -569,7 +538,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Title Card
                         Container(
                           width: MediaQuery.of(context).size.width * 0.5,
                           padding: const EdgeInsets.symmetric(
@@ -605,8 +573,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
                             ],
                           ),
                         ),
-
-                        // Form Card
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
@@ -620,7 +586,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
                           ),
                           child: Column(
                             children: [
-                              // Starting point
                               Row(
                                 children: [
                                   const Icon(
@@ -663,9 +628,22 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                         );
                                       },
                                       onSuggestionSelected: (suggestion) {
-                                        pickUpController.text =
-                                            suggestion['description'];
-                                        pickUpPlaceId = suggestion['place_id'];
+                                        setState(() {
+                                          pickUpController.text =
+                                              suggestion['description'];
+                                          pickUpPlaceId =
+                                              suggestion['place_id'];
+                                          isWSO2Start =
+                                              suggestion['description']
+                                                  .toLowerCase()
+                                                  .contains('wso2');
+                                          if (!isWSO2Start) {
+                                            dropOffController.text =
+                                                wso2Address;
+                                            dropOffPlaceId = null;
+                                          }
+                                        });
+                                        _showRoutes();
                                       },
                                       noItemsFoundBuilder:
                                           (context) => const Padding(
@@ -677,13 +655,17 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                               ),
                                             ),
                                           ),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Please enter a starting point';
+                                        }
+                                        return null;
+                                      },
                                     ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 16),
-
-                              // End point
                               Row(
                                 children: [
                                   const Icon(
@@ -693,63 +675,112 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
-                                    child: TypeAheadFormField(
-                                      textFieldConfiguration:
-                                          TextFieldConfiguration(
-                                            controller: dropOffController,
-                                            focusNode: dropOffFocusNode,
-                                            decoration: const InputDecoration(
-                                              labelText: 'End-Point',
-                                              hintText: 'Destination',
-                                              border: OutlineInputBorder(),
-                                              contentPadding:
-                                                  EdgeInsets.symmetric(
-                                                    horizontal: 20,
-                                                    vertical: 15,
+                                    child:
+                                        isWSO2Start
+                                            ? TypeAheadFormField(
+                                              textFieldConfiguration:
+                                                  TextFieldConfiguration(
+                                                    controller:
+                                                        dropOffController,
+                                                    focusNode: dropOffFocusNode,
+                                                    decoration: const InputDecoration(
+                                                      labelText: 'End-Point',
+                                                      hintText: 'Destination',
+                                                      border:
+                                                          OutlineInputBorder(),
+                                                      contentPadding:
+                                                          EdgeInsets.symmetric(
+                                                            horizontal: 20,
+                                                            vertical: 15,
+                                                          ),
+                                                    ),
                                                   ),
+                                              suggestionsCallback: (
+                                                pattern,
+                                              ) async {
+                                                return await searchSriLankaPlaces(
+                                                  pattern,
+                                                );
+                                              },
+                                              itemBuilder: (
+                                                context,
+                                                suggestion,
+                                              ) {
+                                                return ListTile(
+                                                  leading: const Icon(
+                                                    Icons.location_on,
+                                                  ),
+                                                  title: Text(
+                                                    suggestion['description'],
+                                                  ),
+                                                  subtitle: const Text(
+                                                    'Sri Lanka',
+                                                  ),
+                                                );
+                                              },
+                                              onSuggestionSelected: (
+                                                suggestion,
+                                              ) {
+                                                setState(() {
+                                                  dropOffController.text =
+                                                      suggestion['description'];
+                                                  dropOffPlaceId =
+                                                      suggestion['place_id'];
+                                                });
+                                                _showRoutes();
+                                              },
+                                              noItemsFoundBuilder:
+                                                  (context) => const Padding(
+                                                    padding: EdgeInsets.all(
+                                                      8.0,
+                                                    ),
+                                                    child: Text(
+                                                      'No locations found in Sri Lanka.',
+                                                    ),
+                                                  ),
+                                              validator: (value) {
+                                                if (value == null ||
+                                                    value.isEmpty) {
+                                                  return 'Please enter a destination';
+                                                }
+                                                return null;
+                                              },
+                                            )
+                                            : TextFormField(
+                                              controller: dropOffController,
+                                              enabled: false,
+                                              focusNode: dropOffFocusNode,
+                                              decoration: InputDecoration(
+                                                labelText: 'End-Point',
+                                                hintText: 'Destination',
+                                                border:
+                                                    const OutlineInputBorder(),
+                                                contentPadding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 20,
+                                                      vertical: 15,
+                                                    ),
+                                                suffixIcon: const Icon(
+                                                  Icons.lock,
+                                                ),
+                                              ),
+                                              readOnly: true,
+                                              validator: (value) {
+                                                if (value == null ||
+                                                    value.isEmpty) {
+                                                  return 'Please enter a destination';
+                                                }
+                                                return null;
+                                              },
                                             ),
-                                          ),
-                                      suggestionsCallback: (pattern) async {
-                                        return await searchSriLankaPlaces(
-                                          pattern,
-                                        );
-                                      },
-                                      itemBuilder: (context, suggestion) {
-                                        return ListTile(
-                                          leading: const Icon(
-                                            Icons.location_on,
-                                          ),
-                                          title: Text(
-                                            suggestion['description'],
-                                          ),
-                                          subtitle: const Text('Sri Lanka'),
-                                        );
-                                      },
-                                      onSuggestionSelected: (suggestion) {
-                                        dropOffController.text =
-                                            suggestion['description'];
-                                        dropOffPlaceId = suggestion['place_id'];
-                                      },
-                                      noItemsFoundBuilder:
-                                          (context) => const Padding(
-                                            padding: EdgeInsets.all(8.0),
-                                            child: Text(
-                                              'No locations found in Sri Lanka.',
-                                            ),
-                                          ),
-                                    ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 16),
-
-                              // View Routes Button
                               CustomButton(
                                 text: 'View Route Options',
                                 onPressed: _showRoutes,
                               ),
-
-                              // Map for displaying routes
                               if (isMapVisible) ...[
                                 const SizedBox(height: 16),
                                 Container(
@@ -795,8 +826,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                     ),
                                   ),
                                 ),
-
-                                // Route options
                                 if (routeOptions.isNotEmpty) ...[
                                   const SizedBox(height: 16),
                                   const Text(
@@ -920,10 +949,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                   ),
                                 ],
                               ],
-
                               const SizedBox(height: 24),
-
-                              // Date
                               Row(
                                 children: [
                                   const Icon(
@@ -933,17 +959,37 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
-                                    child: CustomInputField(
-                                      controller: dateController,
-                                      label: 'Date',
-                                      hintText: 'DD/MM/YYYY',
+                                    child: GestureDetector(
+                                      onTap: () async {
+                                        DateTime? pickedDate =
+                                            await showDatePicker(
+                                              context: context,
+                                              initialDate: DateTime.now(),
+                                              firstDate: DateTime(2000),
+                                              lastDate: DateTime(2100),
+                                            );
+
+                                        if (pickedDate != null) {
+                                          String formattedDate =
+                                              "${pickedDate.day.toString().padLeft(2, '0')}/"
+                                              "${pickedDate.month.toString().padLeft(2, '0')}/"
+                                              "${pickedDate.year}";
+                                          dateController.text = formattedDate;
+                                        }
+                                      },
+                                      child: AbsorbPointer(
+                                        child: CustomInputField(
+                                          controller: dateController,
+                                          label: 'Date',
+                                          hintText: 'DD/MM/YYYY',
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 16),
 
-                              // Start Time
+                              const SizedBox(height: 16),
                               Row(
                                 children: [
                                   const Icon(
@@ -954,7 +1000,10 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: CustomDropdownField(
-                                      label: 'Arriving Time/Start Time',
+                                      label:
+                                          isWSO2Start
+                                              ? 'Start Time'
+                                              : 'End Time',
                                       hintText: '08:00:00',
                                       options: generateTimes(),
                                       value: selectedTime,
@@ -968,112 +1017,9 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                 ],
                               ),
                               const SizedBox(height: 16),
-
-                              // Return Time
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.access_time,
-                                    color: Color(0x9C002B5B),
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: CustomDropdownField(
-                                      label: 'Trip Start Time',
-                                      hintText: '07:00:00',
-                                      options: generateTimes(),
-                                      value: selectedReturnTime,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          selectedReturnTime = value;
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Vehicle Registration Number
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.directions_car,
-                                    color: Color(0x9C002B5B),
-                                    size: 50,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: TextFormField(
-                                      controller: vehicleRegController,
-                                      enabled: isVehicleRegEditable,
-                                      decoration: const InputDecoration(
-                                        labelText: 'CBL 5680',
-                                        hintText: 'Vehicle Reg. No.',
-                                        border: InputBorder.none,
-                                        filled: true,
-                                        fillColor: Color(0xFFF2F2F2),
-                                        contentPadding: EdgeInsets.symmetric(
-                                          horizontal: 20,
-                                          vertical: 8,
-                                        ),
-                                      ),
-                                      style: const TextStyle(
-                                        color: Colors.black,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.edit,
-                                      color: Color(0xFF0A0E2A),
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        isVehicleRegEditable = true;
-                                      });
-                                    },
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 24),
-
-                              // Post Ride Button
                               CustomButton(
                                 text: 'Post Ride',
                                 onPressed: _postRide,
-                                // () {
-                                // if (_formKey.currentState?.validate() ??
-                                //     false) {
-                                //   // Get the selected route data
-                                //   String routeInfo = '';
-                                //   if (selectedRouteIndex <
-                                //       routeDurations.length) {
-                                //     routeInfo =
-                                //         'Route ${selectedRouteIndex + 1}: ${routeOptions[selectedRouteIndex]}, ${routeDistances[selectedRouteIndex]}';
-                                //   }
-
-                                //   print('Posting ride...');
-                                //   print('Pick-Up: ${pickUpController.text}');
-                                //   print(
-                                //     'Drop-Off: ${dropOffController.text}',
-                                //   );
-                                //   print('Date: ${dateController.text}');
-                                //   print('Time selected: $selectedTime');
-                                //   print('Return Time: $selectedReturnTime');
-                                //   print(
-                                //     'Vehicle Reg: ${vehicleRegController.text}',
-                                //   );
-                                //   print('Selected Route: $routeInfo');
-                                // } else {
-                                //   print(
-                                //     'Please fill in all required fields.',
-                                //   );
-                                // }
-                                // },
                               ),
                             ],
                           ),
