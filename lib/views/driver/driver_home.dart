@@ -46,8 +46,6 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   }
 
   Future<void> fetchLastTrips() async {
-    // Simulate fetching last trips (replace with actual API call if available)
-    // For now, reinitialize with the same hardcoded data
     setState(() {
       lastTrips = [
         LastTrip(
@@ -226,3 +224,5 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     );
   }
 }
+
+//Finishing one completed 
