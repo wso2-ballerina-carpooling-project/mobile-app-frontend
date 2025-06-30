@@ -32,7 +32,7 @@ class RideListScreen extends StatelessWidget {
       }
 
       const String baseUrl =
-          'http://172.20.10.3:9090/api'; // Replace with your actual API base URL
+          'http://192.168.90.103:9090/api'; // Replace with your actual API base URL
       final url = Uri.parse('$baseUrl/rides/book');
       final body = jsonEncode({'rideId': rideId, 'waypoint': waypoint});
 

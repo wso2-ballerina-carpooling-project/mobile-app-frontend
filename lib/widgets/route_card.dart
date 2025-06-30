@@ -1,217 +1,175 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_frontend/config/constant.dart';
+import 'package:intl/intl.dart';
 
 class RouteCard extends StatelessWidget {
   final String startTime;
-  final String endTime;
   final String duration;
   final String startLocation;
-  final String startAddress;
   final String endLocation;
-  final String endAddress;
-  final String seatInfo;
+  final String peopleJoined; // e.g., "3/4"
   final String price;
   final Function()? onStartPressed;
 
   const RouteCard({
     super.key,
     required this.startTime,
-    required this.endTime,
     required this.duration,
     required this.startLocation,
-    required this.startAddress,
     required this.endLocation,
-    required this.endAddress,
-    required this.seatInfo,
+    required this.peopleJoined,
     required this.price,
     this.onStartPressed,
   });
 
+  // Helper method to calculate estimated start time (startTime - duration - 5 minutes)
+  String _calculateEstimatedStartTime() {
+    try {
+      final DateFormat timeFormat = DateFormat('hh:mm a');
+      final DateTime startDateTime = timeFormat.parse(startTime);
+
+      final RegExp durationRegex = RegExp(r'(\d+)h\s*(\d*)m?');
+      final match = durationRegex.firstMatch(duration);
+      int hours = 0;
+      int minutes = 0;
+
+      if (match != null) {
+        hours = int.parse(match.group(1)!);
+        minutes = match.group(2)!.isNotEmpty ? int.parse(match.group(2)!) : 0;
+      }
+
+      final totalMinutes = (hours * 60 + minutes + 5);
+      final estimatedTime = startDateTime.subtract(Duration(minutes: totalMinutes));
+
+      return timeFormat.format(estimatedTime);
+    } catch (e) {
+      return 'N/A';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    const cardColor = Color(0xFF4A90E2); // Blue from the image
+    const textColor = Colors.white;
+    const buttonColor = Color(0xFF50E3C2); // Greenish button color
+    const infoBgColor = Color(0x33FFFFFF); // Semi-transparent white for background
+
     return Container(
-      margin: const EdgeInsets.all(5),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
+            blurRadius: 8,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Main content row
+          // Header: Time
+          Text(
+            startTime,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Est. ${_calculateEstimatedStartTime()}',
+            style: const TextStyle(
+              fontSize: 14,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Body: Locations
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Left side with time and timeline
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    startTime,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      color: Colors.black87
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: const BoxDecoration(
-                      color: mainButtonColor,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  Container(
-                    width: 2,
-                    height: 15,
-                    color: Colors.grey.shade300,
-                  ),
-                  Text(
-                    duration,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  Container(
-                    width: 2,
-                    height: 15,
-                    color: Colors.grey.shade300,
-                  ),
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: const BoxDecoration(
-                      color: companyColor,
-                      shape: BoxShape.rectangle,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    endTime,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      color: Colors.black87
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(width: 15),
-              
-              // Middle section with locations
+              const Icon(Icons.location_on_outlined, color: textColor, size: 20),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          startLocation,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20,
-                            color: Colors.black87
-                          ),
-                        ),
-                        const Spacer(),
-                        const Icon(
-                          Icons.location_on,
-                          color: companyColor,
-                          size: 26,
-                        ),
-                      ],
-                    ),
                     Text(
-                      startAddress,
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 14,
+                      startLocation,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: textColor,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 4),
                     Text(
                       endLocation,
                       style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                        color: Colors.black87
-                      ),
-                    ),
-                    Text(
-                      endAddress,
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
                         fontSize: 14,
+                        color: textColor,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          
-          const SizedBox(height: 25),
-          
-          // Bottom row with three columns - separate from the main row
+          const SizedBox(height: 12),
+          // Footer: People Joined, Price, and Button
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // First column - Seat info
+              // People Joined
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
+                  color: infoBgColor,
+                  borderRadius: BorderRadius.circular(4),
                 ),
-                child: Row(
-  
-                  children: [
-                    const Icon(Icons.airline_seat_recline_normal, size: 16, color: companyColor),
-                    const SizedBox(width: 5),
-                    Text(seatInfo, style: const TextStyle(color: Colors.black54)),
-                  ],
-                ),
-              ),
-              
-              // Second column - Price
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.attach_money, size: 16, color: mainButtonColor),
-                    const SizedBox(width: 5),
-                    Text(price, style: const TextStyle(color: Colors.black54)),
-                  ],
-                ),
-              ),
-              
-              // Third column - Start button
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: mainButtonColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 6),
-                  
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                child: Text(
+                  '$peopleJoined joined',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: textColor,
                   ),
                 ),
+              ),
+              // Price
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: infoBgColor,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  price,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: textColor,
+                  ),
+                ),
+              ),
+              // Start Button
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: buttonColor,
+                  foregroundColor: textColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                ),
                 onPressed: onStartPressed,
-                child: const Text('Start', style: TextStyle(color: Colors.white, fontSize: 13)),
+                child: const Text(
+                  'Start',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
