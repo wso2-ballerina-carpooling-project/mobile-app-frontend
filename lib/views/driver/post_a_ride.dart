@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile_frontend/config/constant.dart';
 import 'package:mobile_frontend/services/ride_services.dart';
+import 'package:mobile_frontend/views/select_location.dart';
 import 'package:mobile_frontend/widgets/custom_input_field.dart';
 import 'package:mobile_frontend/widgets/custom_button.dart';
 import 'package:mobile_frontend/widgets/dropdown_input.dart';
@@ -11,6 +12,7 @@ import 'dart:convert';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+// Import the SelectLocation widget
 
 class RidePostScreen extends StatefulWidget {
   const RidePostScreen({Key? key}) : super(key: key);
@@ -79,35 +81,75 @@ class _RidePostScreenState extends State<RidePostScreen> {
     });
   }
 
-  Future<void> _getAddressFromLatLng(double lat, double lng) async {
+  Future<String?> _getAddressFromLatLng(double lat, double lng) async {
     try {
       List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng);
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks[0];
-        String address = '${place.street}, ${place.locality}';
-        if (!isWSO2Start) {
-          pickUpController.text = address;
-        }
+        String address = '${place.street}, ${place.locality}, ${place.country}';
+        return address;
       }
     } catch (e) {
       print('Error getting address: $e');
     }
-  }
-
-  Future<LatLng?> _getCoordinatesFromAddress(String address) async {
-    try {
-      List<Location> locations = await locationFromAddress(address);
-      if (locations.isNotEmpty) {
-        return LatLng(locations[0].latitude, locations[0].longitude);
-      }
-    } catch (e) {
-      print('Error getting coordinates: $e');
-    }
     return null;
   }
 
-  String? pickUpPlaceId;
-  String? dropOffPlaceId;
+  Future<void> _selectLocation(bool isPickup) async {
+    final LatLng? selectedLocation = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => SelectLocation(
+              initialLocation:
+                  isPickup
+                      ? _selectedLocationFromLatLng(pickUpController.text)
+                      : _selectedLocationFromLatLng(dropOffController.text),
+            ),
+      ),
+    );
+
+    if (selectedLocation != null) {
+      String? address = await _getAddressFromLatLng(
+        selectedLocation.latitude,
+        selectedLocation.longitude,
+      );
+      setState(() {
+        if (isPickup) {
+          pickUpController.text =
+              address ??
+              "Selected Location (${selectedLocation.latitude}, ${selectedLocation.longitude})";
+          isWSO2Start = pickUpController.text.toLowerCase().contains('wso2');
+          if (!isWSO2Start) {
+            dropOffController.text = wso2Address;
+            isPickUpLocked = true;
+          } else {
+            isPickUpLocked = false;
+          }
+        } else {
+          dropOffController.text =
+              address ??
+              "Selected Location (${selectedLocation.latitude}, ${selectedLocation.longitude})";
+          if (dropOffController.text.toLowerCase() !=
+              wso2Address.toLowerCase()) {
+            pickUpController.text = wso2Address;
+            isWSO2Start = true;
+            isPickUpLocked = true;
+          } else {
+            isPickUpLocked = false;
+          }
+        }
+      });
+      _showRoutes();
+    }
+  }
+
+  LatLng? _selectedLocationFromLatLng(String address) {
+    if (address.toLowerCase() == wso2Address.toLowerCase()) {
+      return wso2Coordinates;
+    }
+    return null; // Default to initial map position if not WSO2
+  }
 
   Future<void> _showRoutes() async {
     setState(() {
@@ -116,61 +158,26 @@ class _RidePostScreenState extends State<RidePostScreen> {
     });
 
     try {
-      LatLng? originLatLng;
-      LatLng? destLatLng;
+      LatLng originLatLng =
+          _selectedLocationFromLatLng(pickUpController.text) ?? wso2Coordinates;
+      LatLng destLatLng =
+          _selectedLocationFromLatLng(dropOffController.text) ??
+          wso2Coordinates;
 
-      if (pickUpPlaceId != null) {
-        originLatLng = await getPlaceDetails(pickUpPlaceId!);
-      }
-
-      if (dropOffPlaceId != null) {
-        destLatLng = await getPlaceDetails(dropOffPlaceId!);
-      }
-
-      if (originLatLng == null) {
-        if (pickUpController.text.isEmpty ||
-            pickUpController.text == wso2Address) {
-          originLatLng = wso2Coordinates;
-          pickUpController.text = wso2Address;
-        } else {
-          try {
-            List<Location> locations = await locationFromAddress(
-              "${pickUpController.text}, Sri Lanka",
-            );
-            if (locations.isNotEmpty) {
-              originLatLng = LatLng(
-                locations[0].latitude,
-                locations[0].longitude,
-              );
-            } else {
-              originLatLng = wso2Coordinates;
-            }
-          } catch (e) {
-            originLatLng = wso2Coordinates;
-          }
+      if (pickUpController.text != wso2Address) {
+        List<Location> locations = await locationFromAddress(
+          "${pickUpController.text}, Sri Lanka",
+        );
+        if (locations.isNotEmpty) {
+          originLatLng = LatLng(locations[0].latitude, locations[0].longitude);
         }
       }
-
-      if (destLatLng == null) {
-        if (dropOffController.text.isEmpty || !isWSO2Start) {
-          destLatLng = wso2Coordinates;
-          dropOffController.text = wso2Address;
-        } else {
-          try {
-            List<Location> locations = await locationFromAddress(
-              "${dropOffController.text}, Sri Lanka",
-            );
-            if (locations.isNotEmpty) {
-              destLatLng = LatLng(
-                locations[0].latitude,
-                locations[0].longitude,
-              );
-            } else {
-              destLatLng = const LatLng(6.9344, 79.8428);
-            }
-          } catch (e) {
-            destLatLng = const LatLng(6.9344, 79.8428);
-          }
+      if (dropOffController.text != wso2Address) {
+        List<Location> locations = await locationFromAddress(
+          "${dropOffController.text}, Sri Lanka",
+        );
+        if (locations.isNotEmpty) {
+          destLatLng = LatLng(locations[0].latitude, locations[0].longitude);
         }
       }
 
@@ -195,14 +202,11 @@ class _RidePostScreenState extends State<RidePostScreen> {
 
       await _getDirections(originLatLng, destLatLng);
 
-      LatLng originLatLngMark = originLatLng;
-      LatLng desLat = destLatLng;
-
       setState(() {
         markers = {
           Marker(
             markerId: const MarkerId('origin'),
-            position: originLatLngMark,
+            position: originLatLng,
             icon: BitmapDescriptor.defaultMarkerWithHue(
               BitmapDescriptor.hueGreen,
             ),
@@ -213,7 +217,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
           ),
           Marker(
             markerId: const MarkerId('destination'),
-            position: desLat,
+            position: destLatLng,
             icon: BitmapDescriptor.defaultMarkerWithHue(
               BitmapDescriptor.hueRed,
             ),
@@ -411,7 +415,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
     }
   }
 
-Future<void> _postRide() async {
+  Future<void> _postRide() async {
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all required fields')),
@@ -422,20 +426,21 @@ Future<void> _postRide() async {
     // Show confirmation dialog
     final bool? confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Ride Post'),
-        content: const Text('Are you sure you want to post this ride?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Confirm Ride Post'),
+            content: const Text('Are you sure you want to post this ride?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Confirm'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
     );
 
     if (confirm == true) {
@@ -449,22 +454,27 @@ Future<void> _postRide() async {
           throw Exception('No authentication token found');
         }
         bool waytowork = true;
-        if (pickUpController.text == "WSO2, Bauddhaloka Mawatha, Colombo, Sri Lanka") {
+        if (pickUpController.text ==
+            "WSO2, Bauddhaloka Mawatha, Colombo, Sri Lanka") {
           waytowork = false;
         }
-        final routeData = selectedRouteIndex < routeOptions.length
-            ? {
-                'index': selectedRouteIndex,
-                'duration': routeDurations[selectedRouteIndex],
-                'distance': routeDistances[selectedRouteIndex],
-                'polyline': routeOptions[selectedRouteIndex]
-                    .map((point) => {
-                          'latitude': point.latitude,
-                          'longitude': point.longitude,
-                        })
-                    .toList(),
-              }
-            : null;
+        final routeData =
+            selectedRouteIndex < routeOptions.length
+                ? {
+                  'index': selectedRouteIndex,
+                  'duration': routeDurations[selectedRouteIndex],
+                  'distance': routeDistances[selectedRouteIndex],
+                  'polyline':
+                      routeOptions[selectedRouteIndex]
+                          .map(
+                            (point) => {
+                              'latitude': point.latitude,
+                              'longitude': point.longitude,
+                            },
+                          )
+                          .toList(),
+                }
+                : null;
 
         final rideData = {
           'startLocation': pickUpController.text,
@@ -483,19 +493,70 @@ Future<void> _postRide() async {
         });
 
         if (response.statusCode == 201) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Ride posted successfully')),
+          // Show success dialog
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder:
+                (context) => AlertDialog(
+                  title: const Text('Success'),
+                  content: const Text('Ride posted successfully!'),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        Navigator.pop(context); // Go back to previous screen
+                      },
+                      child: const Text('Back'),
+                    ),
+                  ],
+                ),
           );
-          Navigator.pop(context);
         } else {
-          final errorMessage = jsonDecode(response.body)['message'] ?? 'Failed to post ride';
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage)));
+          final errorMessage =
+              jsonDecode(response.body)['message'] ?? 'Failed to post ride';
+          // Show failure dialog
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder:
+                (context) => AlertDialog(
+                  title: const Text('Failure'),
+                  content: Text(errorMessage),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _postRide(); // Retry posting
+                      },
+                      child: const Text('Post Again'),
+                    ),
+                  ],
+                ),
+          );
         }
       } catch (e) {
         setState(() {
           _isPosting = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error posting ride: $e')));
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (context) => AlertDialog(
+                title: const Text('Failure'),
+                content: Text('Error posting ride: $e'),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _postRide(); // Retry posting
+                    },
+                    child: const Text('Post Again'),
+                  ),
+                ],
+              ),
+        );
       }
     }
   }
@@ -504,645 +565,584 @@ Future<void> _postRide() async {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0E2A),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              SizedBox(
-                height: 60,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20.0,
-                    vertical: 12,
-                  ),
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        left: 0,
-                        top: 0,
-                        bottom: 0,
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.pop(context);
-                          },
-                          child: const Icon(
-                            Icons.arrow_back,
-                            color: Colors.white,
-                            size: 26,
-                          ),
-                        ),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: 60,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20.0,
+                        vertical: 12,
                       ),
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        top: 0,
-                        bottom: 0,
-                        child: Center(
-                          child: const Text(
-                            'Post a Ride',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 24,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w400,
+                      child: Stack(
+                        children: [
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.pop(context);
+                              },
+                              child: const Icon(
+                                Icons.arrow_back,
+                                color: Colors.white,
+                                size: 26,
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: MediaQuery.of(context).size.width * 0.5,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(16),
-                              topRight: Radius.circular(16),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Ride Information',
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            top: 0,
+                            bottom: 0,
+                            child: Center(
+                              child: const Text(
+                                'Post a Ride',
+                                textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                                  fontSize: 24,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w400,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Center(
-                                child: Container(
-                                  height: 2,
-                                  width: 50,
-                                  color: Colors.blue,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.only(
-                              bottomLeft: Radius.circular(16),
-                              bottomRight: Radius.circular(16),
-                              topRight: Radius.circular(16),
                             ),
                           ),
-                          child: Column(
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.location_on,
-                                    color: Color(0x9C002B5B),
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child:
-                                        isPickUpLocked
-                                            ? TextFormField(
-                                              controller: pickUpController,
-                                              focusNode: pickUpFocusNode,
-                                              decoration: const InputDecoration(
-                                                labelText: 'Starting-Point',
-                                                hintText: 'Your Location',
-                                                border: OutlineInputBorder(),
-                                                contentPadding:
-                                                    EdgeInsets.symmetric(
-                                                      horizontal: 20,
-                                                      vertical: 15,
-                                                    ),
-                                                suffixIcon: const Icon(
-                                                  Icons.lock,
-                                                ),
-                                              ),
-                                              readOnly: true,
-                                              validator: (value) {
-                                                if (value == null ||
-                                                    value.isEmpty) {
-                                                  return 'Please enter a starting point';
-                                                }
-                                                return null;
-                                              },
-                                            )
-                                            : TypeAheadFormField(
-                                              textFieldConfiguration:
-                                                  TextFieldConfiguration(
-                                                    controller:
-                                                        pickUpController,
-                                                    focusNode: pickUpFocusNode,
-                                                    decoration: const InputDecoration(
-                                                      labelText:
-                                                          'Starting-Point',
-                                                      hintText: 'Your Location',
-                                                      border:
-                                                          OutlineInputBorder(),
-                                                      contentPadding:
-                                                          EdgeInsets.symmetric(
-                                                            horizontal: 20,
-                                                            vertical: 15,
-                                                          ),
-                                                    ),
-                                                  ),
-                                              suggestionsCallback: (
-                                                pattern,
-                                              ) async {
-                                                return await searchSriLankaPlaces(
-                                                  pattern,
-                                                );
-                                              },
-                                              itemBuilder: (
-                                                context,
-                                                suggestion,
-                                              ) {
-                                                return ListTile(
-                                                  leading: const Icon(
-                                                    Icons.location_on,
-                                                  ),
-                                                  title: Text(
-                                                    suggestion['description'],
-                                                  ),
-                                                  subtitle: const Text(
-                                                    'Sri Lanka',
-                                                  ),
-                                                );
-                                              },
-                                              onSuggestionSelected: (
-                                                suggestion,
-                                              ) {
-                                                setState(() {
-                                                  pickUpController.text =
-                                                      suggestion['description'];
-                                                  pickUpPlaceId =
-                                                      suggestion['place_id'];
-                                                  isWSO2Start =
-                                                      suggestion['description']
-                                                          .toLowerCase()
-                                                          .contains('wso2');
-                                                  if (!isWSO2Start) {
-                                                    dropOffController.text =
-                                                        wso2Address;
-                                                    dropOffPlaceId = null;
-                                                  }
-                                                });
-                                                _showRoutes();
-                                              },
-                                              noItemsFoundBuilder:
-                                                  (context) => const Padding(
-                                                    padding: EdgeInsets.all(
-                                                      8.0,
-                                                    ),
-                                                    child: Text(
-                                                      'No locations found in Sri Lanka.',
-                                                      style: TextStyle(
-                                                        color: Colors.black87,
-                                                      ),
-                                                    ),
-                                                  ),
-                                              validator: (value) {
-                                                if (value == null ||
-                                                    value.isEmpty) {
-                                                  return 'Please enter a starting point';
-                                                }
-                                                return null;
-                                              },
-                                            ),
-                                  ),
-                                ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: MediaQuery.of(context).size.width * 0.5,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
                               ),
-                              const SizedBox(height: 16),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.location_on_outlined,
-                                    color: Color(0x9C002B5B),
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child:
-                                        isWSO2Start
-                                            ? TypeAheadFormField(
-                                              textFieldConfiguration:
-                                                  TextFieldConfiguration(
-                                                    controller:
-                                                        dropOffController,
-                                                    focusNode: dropOffFocusNode,
-                                                    decoration: const InputDecoration(
-                                                      labelText: 'End-Point',
-                                                      hintText: 'Destination',
-                                                      border:
-                                                          OutlineInputBorder(),
-                                                      contentPadding:
-                                                          EdgeInsets.symmetric(
-                                                            horizontal: 20,
-                                                            vertical: 15,
-                                                          ),
-                                                    ),
-                                                  ),
-                                              suggestionsCallback: (
-                                                pattern,
-                                              ) async {
-                                                return await searchSriLankaPlaces(
-                                                  pattern,
-                                                );
-                                              },
-                                              itemBuilder: (
-                                                context,
-                                                suggestion,
-                                              ) {
-                                                return ListTile(
-                                                  leading: const Icon(
-                                                    Icons.location_on,
-                                                  ),
-                                                  title: Text(
-                                                    suggestion['description'],
-                                                  ),
-                                                  subtitle: const Text(
-                                                    'Sri Lanka',
-                                                  ),
-                                                );
-                                              },
-                                              onSuggestionSelected: (
-                                                suggestion,
-                                              ) {
-                                                setState(() {
-                                                  dropOffController.text =
-                                                      suggestion['description'];
-                                                  dropOffPlaceId =
-                                                      suggestion['place_id'];
-                                                  // Lock start point to WSO2 if end point is not WSO2
-                                                  if (suggestion['description']
-                                                          .toLowerCase() !=
-                                                      wso2Address
-                                                          .toLowerCase()) {
-                                                    pickUpController.text =
-                                                        wso2Address;
-                                                    pickUpPlaceId = null;
-                                                    isWSO2Start = true;
-                                                    isPickUpLocked =
-                                                        true; // Lock the start point
-                                                  } else {
-                                                    isPickUpLocked =
-                                                        false; // Unlock if WSO2 is selected
-                                                  }
-                                                });
-                                                _showRoutes();
-                                              },
-                                              noItemsFoundBuilder:
-                                                  (context) => const Padding(
-                                                    padding: EdgeInsets.all(
-                                                      8.0,
-                                                    ),
-                                                    child: Text(
-                                                      'No locations found in Sri Lanka.',
-                                                    ),
-                                                  ),
-                                              validator: (value) {
-                                                if (value == null ||
-                                                    value.isEmpty) {
-                                                  return 'Please enter a destination';
-                                                }
-                                                return null;
-                                              },
-                                            )
-                                            : TextFormField(
-                                              controller: dropOffController,
-                                              enabled: false,
-                                              focusNode: dropOffFocusNode,
-                                              decoration: InputDecoration(
-                                                labelText: 'End-Point',
-                                                hintText: 'Destination',
-                                                border:
-                                                    const OutlineInputBorder(),
-                                                contentPadding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 20,
-                                                      vertical: 15,
-                                                    ),
-                                                suffixIcon: const Icon(
-                                                  Icons.lock,
-                                                ),
-                                              ),
-                                              readOnly: true,
-                                              validator: (value) {
-                                                if (value == null ||
-                                                    value.isEmpty) {
-                                                  return 'Please enter a destination';
-                                                }
-                                                return null;
-                                              },
-                                            ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: ElevatedButton(
-                                  onPressed: _showRoutes,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: mainButtonColor,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 15.0,
-                                      horizontal: 20.0,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(2.0),
-                                    ),
-                                    elevation: 2.0,
-                                  ),
-                                  child: const Text(
-                                    'View Routes',
-                                    style: TextStyle(
-                                      fontSize: 16.0,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(16),
+                                  topRight: Radius.circular(16),
                                 ),
                               ),
-                              if (isMapVisible) ...[
-                                const SizedBox(height: 16),
-                                Container(
-                                  height: 300,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: Colors.grey.shade300,
-                                    ),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: SizedBox(
-                                      width: double.infinity,
-                                      height: 300,
-                                      child: Stack(
-                                        children: [
-                                          GoogleMap(
-                                            initialCameraPosition:
-                                                initialCameraPosition,
-                                            markers: markers,
-                                            polylines: Set<Polyline>.of(
-                                              polylines.values,
-                                            ),
-                                            onMapCreated: (
-                                              GoogleMapController controller,
-                                            ) {
-                                              mapController = controller;
-                                            },
-                                            zoomControlsEnabled: true,
-                                            mapToolbarEnabled: false,
-                                            myLocationButtonEnabled: false,
-                                          ),
-                                          if (isLoading)
-                                            SizedBox(
-                                              width: double.infinity,
-                                              height: 300,
-                                              child: Container(
-                                                color: Colors.black.withOpacity(
-                                                  0.5,
-                                                ),
-                                                child: const Center(
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                        color: Colors.white,
-                                                      ),
-                                                ),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                if (routeOptions.isNotEmpty) ...[
-                                  const SizedBox(height: 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                                   const Text(
-                                    'Select Route:',
+                                    'Ride Information',
                                     style: TextStyle(
-                                      fontSize: 16,
+                                      fontSize: 18,
                                       fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
-                                  SizedBox(
-                                    height: 120,
-                                    child: ListView.builder(
-                                      scrollDirection: Axis.horizontal,
-                                      itemCount: routeOptions.length,
-                                      itemBuilder: (context, index) {
-                                        return GestureDetector(
-                                          onTap: () => _selectRoute(index),
-                                          child: Container(
-                                            width: 160,
-                                            margin: const EdgeInsets.only(
-                                              right: 10,
-                                            ),
-                                            padding: const EdgeInsets.all(10),
-                                            decoration: BoxDecoration(
-                                              border: Border.all(
-                                                color:
-                                                    index == selectedRouteIndex
-                                                        ? Colors.blue
-                                                        : Colors.grey.shade300,
-                                                width:
-                                                    index == selectedRouteIndex
-                                                        ? 2
-                                                        : 1,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              color:
-                                                  index == selectedRouteIndex
-                                                      ? Colors.blue.withOpacity(
-                                                        0.1,
-                                                      )
-                                                      : Colors.grey.shade50,
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Text(
-                                                  'Route ${index + 1}',
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    color:
-                                                        index ==
-                                                                selectedRouteIndex
-                                                            ? Colors.blue
-                                                            : Colors.black87,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 5),
-                                                Text(
-                                                  'Duration: ${routeDurations[index]}',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color:
-                                                        index ==
-                                                                selectedRouteIndex
-                                                            ? Colors
-                                                                .blue
-                                                                .shade800
-                                                            : Colors.black54,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  'Distance: ${routeDistances[index]}',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color:
-                                                        index ==
-                                                                selectedRouteIndex
-                                                            ? Colors
-                                                                .blue
-                                                                .shade800
-                                                            : Colors.black54,
-                                                  ),
-                                                ),
-                                                if (index ==
-                                                    selectedRouteIndex) ...[
-                                                  const SizedBox(height: 5),
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 8,
-                                                          vertical: 3,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.blue,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            10,
-                                                          ),
-                                                    ),
-                                                    child: const Text(
-                                                      'Selected',
-                                                      style: TextStyle(
-                                                        fontSize: 10,
-                                                        color: Colors.white,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      },
+                                  const SizedBox(height: 4),
+                                  Center(
+                                    child: Container(
+                                      height: 2,
+                                      width: 50,
+                                      color: Colors.blue,
                                     ),
                                   ),
                                 ],
-                              ],
-                              const SizedBox(height: 24),
-                              Row(
+                              ),
+                            ),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.only(
+                                  bottomLeft: Radius.circular(16),
+                                  bottomRight: Radius.circular(16),
+                                  topRight: Radius.circular(16),
+                                ),
+                              ),
+                              child: Column(
                                 children: [
-                                  const Icon(
-                                    Icons.calendar_today,
-                                    color: Color(0x9C002B5B),
-                                    size: 20,
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.location_on,
+                                        color: Color(0x9C002B5B),
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child:
+                                            isPickUpLocked
+                                                ? TextFormField(
+                                                  controller: pickUpController,
+                                                  focusNode: pickUpFocusNode,
+                                                  decoration:
+                                                      const InputDecoration(
+                                                        labelText:
+                                                            'Starting-Point',
+                                                        hintText:
+                                                            'Your Location',
+                                                        border:
+                                                            OutlineInputBorder(),
+                                                        contentPadding:
+                                                            EdgeInsets.symmetric(
+                                                              horizontal: 20,
+                                                              vertical: 15,
+                                                            ),
+                                                        suffixIcon: const Icon(
+                                                          Icons.lock,
+                                                        ),
+                                                      ),
+                                                  readOnly: true,
+                                                  validator: (value) {
+                                                    if (value == null ||
+                                                        value.isEmpty) {
+                                                      return 'Please enter a starting point';
+                                                    }
+                                                    return null;
+                                                  },
+                                                )
+                                                : GestureDetector(
+                                                  onTap:
+                                                      () =>
+                                                          _selectLocation(true),
+                                                  child: AbsorbPointer(
+                                                    child: TextFormField(
+                                                      controller:
+                                                          pickUpController,
+                                                      focusNode:
+                                                          pickUpFocusNode,
+                                                      decoration: const InputDecoration(
+                                                        labelText:
+                                                            'Starting-Point',
+                                                        hintText:
+                                                            'Tap to select location',
+                                                        border:
+                                                            OutlineInputBorder(),
+                                                        contentPadding:
+                                                            EdgeInsets.symmetric(
+                                                              horizontal: 20,
+                                                              vertical: 15,
+                                                            ),
+                                                        suffixIcon: const Icon(
+                                                          Icons.map,
+                                                        ),
+                                                      ),
+                                                      readOnly: true,
+                                                      validator: (value) {
+                                                        if (value == null ||
+                                                            value.isEmpty) {
+                                                          return 'Please enter a starting point';
+                                                        }
+                                                        return null;
+                                                      },
+                                                    ),
+                                                  ),
+                                                ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () async {
-                                        DateTime? pickedDate =
-                                            await showDatePicker(
-                                              context: context,
-                                              initialDate: DateTime.now(),
-                                              firstDate: DateTime(2000),
-                                              lastDate: DateTime(2100),
-                                            );
-
-                                        if (pickedDate != null) {
-                                          String formattedDate =
-                                              "${pickedDate.day.toString().padLeft(2, '0')}/"
-                                              "${pickedDate.month.toString().padLeft(2, '0')}/"
-                                              "${pickedDate.year}";
-                                          dateController.text = formattedDate;
-                                        }
-                                      },
-                                      child: AbsorbPointer(
-                                        child: CustomInputField(
-                                          controller: dateController,
-                                          label: 'Date',
-                                          hintText: 'DD/MM/YYYY',
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.location_on_outlined,
+                                        color: Color(0x9C002B5B),
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child:
+                                            isWSO2Start
+                                                ? GestureDetector(
+                                                  onTap:
+                                                      () => _selectLocation(
+                                                        false,
+                                                      ),
+                                                  child: AbsorbPointer(
+                                                    child: TextFormField(
+                                                      controller:
+                                                          dropOffController,
+                                                      focusNode:
+                                                          dropOffFocusNode,
+                                                      decoration: const InputDecoration(
+                                                        labelText: 'End-Point',
+                                                        hintText:
+                                                            'Tap to select location',
+                                                        border:
+                                                            OutlineInputBorder(),
+                                                        contentPadding:
+                                                            EdgeInsets.symmetric(
+                                                              horizontal: 20,
+                                                              vertical: 15,
+                                                            ),
+                                                        suffixIcon: const Icon(
+                                                          Icons.map,
+                                                        ),
+                                                      ),
+                                                      readOnly: true,
+                                                      validator: (value) {
+                                                        if (value == null ||
+                                                            value.isEmpty) {
+                                                          return 'Please enter a destination';
+                                                        }
+                                                        return null;
+                                                      },
+                                                    ),
+                                                  ),
+                                                )
+                                                : TextFormField(
+                                                  controller: dropOffController,
+                                                  enabled: false,
+                                                  focusNode: dropOffFocusNode,
+                                                  decoration: InputDecoration(
+                                                    labelText: 'End-Point',
+                                                    hintText: 'Destination',
+                                                    border:
+                                                        const OutlineInputBorder(),
+                                                    contentPadding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 20,
+                                                          vertical: 15,
+                                                        ),
+                                                    suffixIcon: const Icon(
+                                                      Icons.lock,
+                                                    ),
+                                                  ),
+                                                  readOnly: true,
+                                                  validator: (value) {
+                                                    if (value == null ||
+                                                        value.isEmpty) {
+                                                      return 'Please enter a destination';
+                                                    }
+                                                    return null;
+                                                  },
+                                                ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: ElevatedButton(
+                                      onPressed: _showRoutes,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: mainButtonColor,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 15.0,
+                                          horizontal: 20.0,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            2.0,
+                                          ),
+                                        ),
+                                        elevation: 2.0,
+                                      ),
+                                      child: const Text(
+                                        'View Routes',
+                                        style: TextStyle(
+                                          fontSize: 16.0,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.access_time,
-                                    color: Color(0x9C002B5B),
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: CustomDropdownField(
-                                      label:
-                                          isWSO2Start
-                                              ? 'Start Time'
-                                              : 'Arriving Time',
-                                      hintText:
-                                          isWSO2Start ? '17:00:00' : '08:00:00',
-                                      options: _getTimeOptions(),
-                                      value: selectedTime,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          selectedTime = value;
-                                        });
-                                      },
+                                  if (isMapVisible) ...[
+                                    const SizedBox(height: 16),
+                                    Container(
+                                      height: 300,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: Colors.grey.shade300,
+                                        ),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(16),
+                                        child: SizedBox(
+                                          width: double.infinity,
+                                          height: 300,
+                                          child: Stack(
+                                            children: [
+                                              GoogleMap(
+                                                initialCameraPosition:
+                                                    initialCameraPosition,
+                                                markers: markers,
+                                                polylines: Set<Polyline>.of(
+                                                  polylines.values,
+                                                ),
+                                                onMapCreated: (controller) {
+                                                  mapController = controller;
+                                                },
+                                                zoomControlsEnabled: true,
+                                                mapToolbarEnabled: false,
+                                                myLocationButtonEnabled: false,
+                                              ),
+                                              if (isLoading)
+                                                SizedBox(
+                                                  width: double.infinity,
+                                                  height: 300,
+                                                  child: Container(
+                                                    color: Colors.black
+                                                        .withOpacity(0.5),
+                                                    child: const Center(
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                            color: Colors.white,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
                                     ),
+                                    if (routeOptions.isNotEmpty) ...[
+                                      const SizedBox(height: 16),
+                                      const Text(
+                                        'Select Route:',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      SizedBox(
+                                        height: 120,
+                                        child: ListView.builder(
+                                          scrollDirection: Axis.horizontal,
+                                          itemCount: routeOptions.length,
+                                          itemBuilder: (context, index) {
+                                            return GestureDetector(
+                                              onTap: () => _selectRoute(index),
+                                              child: Container(
+                                                width: 160,
+                                                margin: const EdgeInsets.only(
+                                                  right: 10,
+                                                ),
+                                                padding: const EdgeInsets.all(
+                                                  10,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  border: Border.all(
+                                                    color:
+                                                        index ==
+                                                                selectedRouteIndex
+                                                            ? Colors.blue
+                                                            : Colors
+                                                                .grey
+                                                                .shade300,
+                                                    width:
+                                                        index ==
+                                                                selectedRouteIndex
+                                                            ? 2
+                                                            : 1,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  color:
+                                                      index ==
+                                                              selectedRouteIndex
+                                                          ? Colors.blue
+                                                              .withOpacity(0.1)
+                                                          : Colors.grey.shade50,
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    Text(
+                                                      'Route ${index + 1}',
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color:
+                                                            index ==
+                                                                    selectedRouteIndex
+                                                                ? Colors.blue
+                                                                : Colors
+                                                                    .black87,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 5),
+                                                    Text(
+                                                      'Duration: ${routeDurations[index]}',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color:
+                                                            index ==
+                                                                    selectedRouteIndex
+                                                                ? Colors
+                                                                    .blue
+                                                                    .shade800
+                                                                : Colors
+                                                                    .black54,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      'Distance: ${routeDistances[index]}',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color:
+                                                            index ==
+                                                                    selectedRouteIndex
+                                                                ? Colors
+                                                                    .blue
+                                                                    .shade800
+                                                                : Colors
+                                                                    .black54,
+                                                      ),
+                                                    ),
+                                                    if (index ==
+                                                        selectedRouteIndex) ...[
+                                                      const SizedBox(height: 5),
+                                                      Container(
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 8,
+                                                              vertical: 3,
+                                                            ),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.blue,
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                10,
+                                                              ),
+                                                        ),
+                                                        child: const Text(
+                                                          'Selected',
+                                                          style: TextStyle(
+                                                            fontSize: 10,
+                                                            color: Colors.white,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                  const SizedBox(height: 24),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.calendar_today,
+                                        color: Color(0x9C002B5B),
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () async {
+                                            DateTime? pickedDate =
+                                                await showDatePicker(
+                                                  context: context,
+                                                  initialDate: DateTime.now(),
+                                                  firstDate: DateTime(2000),
+                                                  lastDate: DateTime(2100),
+                                                );
+
+                                            if (pickedDate != null) {
+                                              String formattedDate =
+                                                  "${pickedDate.day.toString().padLeft(2, '0')}/"
+                                                  "${pickedDate.month.toString().padLeft(2, '0')}/"
+                                                  "${pickedDate.year}";
+                                              dateController.text =
+                                                  formattedDate;
+                                            }
+                                          },
+                                          child: AbsorbPointer(
+                                            child: CustomInputField(
+                                              controller: dateController,
+                                              label: 'Date',
+                                              hintText: 'DD/MM/YYYY',
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.access_time,
+                                        color: Color(0x9C002B5B),
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: CustomDropdownField(
+                                          label:
+                                              isWSO2Start
+                                                  ? 'Start Time'
+                                                  : 'Arriving Time',
+                                          hintText:
+                                              isWSO2Start
+                                                  ? '17:00:00'
+                                                  : '08:00:00',
+                                          options: _getTimeOptions(),
+                                          value: selectedTime,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              selectedTime = value;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  CustomButton(
+                                    text: 'Post Ride',
+                                    onPressed: _postRide,
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 16),
-
-                              CustomButton(
-                                text: 'Post Ride',
-                                onPressed: _postRide,
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_isPosting)
+            Center(
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 4.0,
                   ),
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+        ],
       ),
     );
   }
