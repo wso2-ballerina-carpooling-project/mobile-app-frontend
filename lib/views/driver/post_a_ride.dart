@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:mobile_frontend/config/constant.dart';
 import 'package:mobile_frontend/services/ride_services.dart';
-import 'package:mobile_frontend/views/select_location.dart';
+import 'package:mobile_frontend/views/common/select_location.dart';
 import 'package:mobile_frontend/widgets/custom_input_field.dart';
 import 'package:mobile_frontend/widgets/custom_button.dart';
 import 'package:mobile_frontend/widgets/dropdown_input.dart';
@@ -11,8 +13,6 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:flutter_typeahead/flutter_typeahead.dart';
-// Import the SelectLocation widget
 
 class RidePostScreen extends StatefulWidget {
   const RidePostScreen({Key? key}) : super(key: key);
@@ -30,13 +30,11 @@ class _RidePostScreenState extends State<RidePostScreen> {
   final TextEditingController dateController = TextEditingController();
   final TextEditingController vehicleRegController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  final _storage = FlutterSecureStorage();
+  final _storage = const FlutterSecureStorage();
   bool _isPosting = false;
-  bool isPickUpLocked = false; // New state to lock start point
-
-  // Place search controllers
-  final FocusNode pickUpFocusNode = FocusNode();
-  final FocusNode dropOffFocusNode = FocusNode();
+  bool isPickUpLocked = false;
+  bool isDropOffLocked = false;
+  bool isWSO2Start = false;
 
   // Google Maps Controller
   GoogleMapController? mapController;
@@ -57,19 +55,17 @@ class _RidePostScreenState extends State<RidePostScreen> {
   List<String> routeDurations = [];
   List<String> routeDistances = [];
 
+  String? pickUpPlaceId;
+  String? dropOffPlaceId;
+
   // WSO2 specific variables
   final String wso2Address = "WSO2, Bauddhaloka Mawatha, Colombo, Sri Lanka";
-  final LatLng wso2Coordinates = const LatLng(
-    6.8953284,
-    79.8546711,
-  ); // WSO2 coordinates
-  bool isWSO2Start = false;
+  final LatLng wso2Coordinates = const LatLng(6.8953284, 79.8546711);
 
   @override
   void initState() {
     super.initState();
     _determinePosition();
-    isPickUpLocked = false; // Initialize lock state
   }
 
   Future<void> _determinePosition() async {
@@ -77,7 +73,8 @@ class _RidePostScreenState extends State<RidePostScreen> {
       pickUpController.text = "";
       dropOffController.text = "";
       isWSO2Start = true;
-      isPickUpLocked = false; // Reset lock on initialization
+      isPickUpLocked = false;
+      isDropOffLocked = false;
     });
   }
 
@@ -91,6 +88,9 @@ class _RidePostScreenState extends State<RidePostScreen> {
       }
     } catch (e) {
       print('Error getting address: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error getting address: $e')));
     }
     return null;
   }
@@ -119,28 +119,36 @@ class _RidePostScreenState extends State<RidePostScreen> {
           pickUpController.text =
               address ??
               "Selected Location (${selectedLocation.latitude}, ${selectedLocation.longitude})";
+          pickUpPlaceId = null; // No place ID for map-selected location
           isWSO2Start = pickUpController.text.toLowerCase().contains('wso2');
-          if (!isWSO2Start) {
+          if (!isWSO2Start && dropOffController.text.isEmpty) {
             dropOffController.text = wso2Address;
-            isPickUpLocked = true;
+            dropOffPlaceId = null;
+            isDropOffLocked = true;
+            isPickUpLocked = false;
           } else {
+            isDropOffLocked = false;
             isPickUpLocked = false;
           }
         } else {
           dropOffController.text =
               address ??
               "Selected Location (${selectedLocation.latitude}, ${selectedLocation.longitude})";
-          if (dropOffController.text.toLowerCase() !=
-              wso2Address.toLowerCase()) {
+          dropOffPlaceId = null; // No place ID for map-selected location
+          if (!dropOffController.text.toLowerCase().contains('wso2') &&
+              pickUpController.text.isEmpty) {
             pickUpController.text = wso2Address;
+            pickUpPlaceId = null;
             isWSO2Start = true;
             isPickUpLocked = true;
+            isDropOffLocked = false;
           } else {
             isPickUpLocked = false;
+            isDropOffLocked = false;
           }
         }
       });
-      _showRoutes();
+      await _showRoutes();
     }
   }
 
@@ -336,24 +344,10 @@ class _RidePostScreenState extends State<RidePostScreen> {
 
   List<String> _getTimeOptions() {
     if (isWSO2Start) {
-      // Start Time options: 17:00:00, 18:00:00, 19:00:00
       return ['17:00:00', '18:00:00', '19:00:00'];
     } else {
-      // Arriving Time options: 08:00:00, 09:00:00, 10:00:00
       return ['08:00:00', '09:00:00', '10:00:00'];
     }
-  }
-
-  @override
-  void dispose() {
-    pickUpController.dispose();
-    dropOffController.dispose();
-    dateController.dispose();
-    vehicleRegController.dispose();
-    pickUpFocusNode.dispose();
-    dropOffFocusNode.dispose();
-    mapController?.dispose();
-    super.dispose();
   }
 
   Future<List<Map<String, dynamic>>> searchSriLankaPlaces(String query) async {
@@ -371,7 +365,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
         if (data['status'] == 'OK') {
           final predictions = data['predictions'] as List;
           return predictions.map((prediction) {
@@ -380,11 +373,22 @@ class _RidePostScreenState extends State<RidePostScreen> {
               'place_id': prediction['place_id'],
             };
           }).toList();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Place search failed: ${data['status']}')),
+          );
+          return [];
         }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to fetch place suggestions')),
+        );
+        return [];
       }
-      return [];
     } catch (e) {
-      print('Error searching places: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error searching places: $e')));
       return [];
     }
   }
@@ -415,6 +419,19 @@ class _RidePostScreenState extends State<RidePostScreen> {
     }
   }
 
+  Future<void> updateMapTheme(GoogleMapController controller) async {
+    try {
+      String styleJson = await getJsonFileFromThemes('themes/map_style.json');
+      await controller.setMapStyle(styleJson);
+    } catch (e) {
+      debugPrint('Error setting map style: $e');
+    }
+  }
+
+  Future<String> getJsonFileFromThemes(String path) async {
+    return await rootBundle.loadString(path);
+  }
+
   Future<void> _postRide() async {
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -423,21 +440,94 @@ class _RidePostScreenState extends State<RidePostScreen> {
       return;
     }
 
-    // Show confirmation dialog
     final bool? confirm = await showDialog<bool>(
       context: context,
+      barrierDismissible: false, 
+      barrierColor: Colors.black.withOpacity(0.6), // Dark overlay for focus
       builder:
           (context) => AlertDialog(
-            title: const Text('Confirm Ride Post'),
-            content: const Text('Are you sure you want to post this ride?'),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(
+                20,
+              ), 
+            ),
+            backgroundColor: Colors.white, 
+            elevation: 8, 
+            title: 
+                Text(
+                  'Confirm Ride Post',
+                  style: TextStyle(
+                    color:
+                        Colors
+                            .black87, // White for dark theme (instead of black87)
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            content: const Text(
+              'Are you sure you want to post this ride?',
+              style: TextStyle(
+                color:
+                    Colors
+                        .black87, // Light white for readability on dark background
+                fontSize: 16,
+              ),
+            ),
+           
+            actionsPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ), // Match logout dialog
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Cancel'),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: linkColor, // Use linkColor from constant.dart
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  side: BorderSide(
+                    color: linkColor,
+                    width: 1,
+                  ), // Match logout dialog's border
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                      10,
+                    ), // Match logout dialog
+                  ),
+                ),
               ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Confirm'),
+                child: const Text(
+                  'Confirm',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  backgroundColor:
+                      mainButtonColor, // Use mainButtonColor from constant.dart
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                      10,
+                    ), // Match logout dialog
+                  ),
+                ),
               ),
             ],
           ),
@@ -454,8 +544,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
           throw Exception('No authentication token found');
         }
         bool waytowork = true;
-        if (pickUpController.text ==
-            "WSO2, Bauddhaloka Mawatha, Colombo, Sri Lanka") {
+        if (pickUpController.text == wso2Address) {
           waytowork = false;
         }
         final routeData =
@@ -493,7 +582,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
         });
 
         if (response.statusCode == 201) {
-          // Show success dialog
           await showDialog(
             context: context,
             barrierDismissible: false,
@@ -505,7 +593,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
                     TextButton(
                       onPressed: () {
                         Navigator.of(context).pop();
-                        Navigator.pop(context); // Go back to previous screen
+                        Navigator.pop(context);
                       },
                       child: const Text('Back'),
                     ),
@@ -515,7 +603,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
         } else {
           final errorMessage =
               jsonDecode(response.body)['message'] ?? 'Failed to post ride';
-          // Show failure dialog
           await showDialog(
             context: context,
             barrierDismissible: false,
@@ -527,7 +614,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
                     TextButton(
                       onPressed: () {
                         Navigator.of(context).pop();
-                        _postRide(); // Retry posting
+                        _postRide();
                       },
                       child: const Text('Post Again'),
                     ),
@@ -550,7 +637,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
                   TextButton(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      _postRide(); // Retry posting
+                      _postRide();
                     },
                     child: const Text('Post Again'),
                   ),
@@ -559,6 +646,16 @@ class _RidePostScreenState extends State<RidePostScreen> {
         );
       }
     }
+  }
+
+  @override
+  void dispose() {
+    pickUpController.dispose();
+    dropOffController.dispose();
+    dateController.dispose();
+    vehicleRegController.dispose();
+    mapController?.dispose();
+    super.dispose();
   }
 
   @override
@@ -586,9 +683,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
                             top: 0,
                             bottom: 0,
                             child: GestureDetector(
-                              onTap: () {
-                                Navigator.pop(context);
-                              },
+                              onTap: () => Navigator.pop(context),
                               child: const Icon(
                                 Icons.arrow_back,
                                 color: Colors.white,
@@ -596,13 +691,13 @@ class _RidePostScreenState extends State<RidePostScreen> {
                               ),
                             ),
                           ),
-                          Positioned(
+                          const Positioned(
                             left: 0,
                             right: 0,
                             top: 0,
                             bottom: 0,
                             child: Center(
-                              child: const Text(
+                              child: Text(
                                 'Post a Ride',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
@@ -672,6 +767,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
                               ),
                               child: Column(
                                 children: [
+                                  // Pickup Location Input with TypeAhead
                                   Row(
                                     children: [
                                       const Icon(
@@ -685,7 +781,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                             isPickUpLocked
                                                 ? TextFormField(
                                                   controller: pickUpController,
-                                                  focusNode: pickUpFocusNode,
                                                   decoration:
                                                       const InputDecoration(
                                                         labelText:
@@ -699,7 +794,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                                               horizontal: 20,
                                                               vertical: 15,
                                                             ),
-                                                        suffixIcon: const Icon(
+                                                        suffixIcon: Icon(
                                                           Icons.lock,
                                                         ),
                                                       ),
@@ -712,47 +807,116 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                                     return null;
                                                   },
                                                 )
-                                                : GestureDetector(
-                                                  onTap:
-                                                      () =>
-                                                          _selectLocation(true),
-                                                  child: AbsorbPointer(
-                                                    child: TextFormField(
-                                                      controller:
-                                                          pickUpController,
-                                                      focusNode:
-                                                          pickUpFocusNode,
-                                                      decoration: const InputDecoration(
-                                                        labelText:
-                                                            'Starting-Point',
-                                                        hintText:
-                                                            'Tap to select location',
-                                                        border:
-                                                            OutlineInputBorder(),
-                                                        contentPadding:
-                                                            EdgeInsets.symmetric(
-                                                              horizontal: 20,
-                                                              vertical: 15,
-                                                            ),
-                                                        suffixIcon: const Icon(
-                                                          Icons.map,
+                                                : TypeAheadField<
+                                                  Map<String, dynamic>
+                                                >(
+                                                  textFieldConfiguration: TextFieldConfiguration(
+                                                    controller:
+                                                        pickUpController,
+                                                    decoration: InputDecoration(
+                                                      labelText:
+                                                          'Starting-Point',
+                                                      hintText:
+                                                          'Search or tap map icon',
+                                                      border:
+                                                          const OutlineInputBorder(),
+                                                      contentPadding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 20,
+                                                            vertical: 15,
+                                                          ),
+                                                      suffixIcon: IconButton(
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .location_on_sharp,
                                                         ),
+                                                        onPressed:
+                                                            () =>
+                                                                _selectLocation(
+                                                                  true,
+                                                                ),
                                                       ),
-                                                      readOnly: true,
-                                                      validator: (value) {
-                                                        if (value == null ||
-                                                            value.isEmpty) {
-                                                          return 'Please enter a starting point';
-                                                        }
-                                                        return null;
-                                                      },
                                                     ),
                                                   ),
+                                                  suggestionsCallback: (
+                                                    pattern,
+                                                  ) async {
+                                                    if (pattern.length >= 3) {
+                                                      return await searchSriLankaPlaces(
+                                                        pattern,
+                                                      );
+                                                    }
+                                                    return [];
+                                                  },
+                                                  itemBuilder: (
+                                                    context,
+                                                    suggestion,
+                                                  ) {
+                                                    return ListTile(
+                                                      leading: const Icon(
+                                                        Icons.location_on,
+                                                      ),
+                                                      title: Text(
+                                                        suggestion['description'],
+                                                      ),
+                                                      subtitle: const Text(
+                                                        'Sri Lanka',
+                                                      ),
+                                                    );
+                                                  },
+                                                  onSuggestionSelected: (
+                                                    suggestion,
+                                                  ) {
+                                                    setState(() {
+                                                      pickUpController.text =
+                                                          suggestion['description'];
+                                                      pickUpPlaceId =
+                                                          suggestion['place_id'];
+                                                      isWSO2Start =
+                                                          suggestion['description']
+                                                              .toLowerCase()
+                                                              .contains('wso2');
+                                                      if (!isWSO2Start) {
+                                                        dropOffController.text =
+                                                            wso2Address;
+                                                        dropOffPlaceId = null;
+                                                      }
+                                                    });
+                                                  },
+                                                  noItemsFoundBuilder:
+                                                      (
+                                                        context,
+                                                      ) => const Padding(
+                                                        padding: EdgeInsets.all(
+                                                          8.0,
+                                                        ),
+                                                        child: Text(
+                                                          'No locations found',
+                                                        ),
+                                                      ),
+                                                  suggestionsBoxDecoration:
+                                                      SuggestionsBoxDecoration(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                        elevation: 4,
+                                                        color: Colors.white,
+                                                        constraints:
+                                                            const BoxConstraints(
+                                                              maxHeight: 200,
+                                                            ),
+                                                      ),
+                                                  debounceDuration:
+                                                      const Duration(
+                                                        milliseconds: 300,
+                                                      ),
                                                 ),
                                       ),
                                     ],
                                   ),
                                   const SizedBox(height: 16),
+                                  // Drop-off Location Input with TypeAhead
                                   Row(
                                     children: [
                                       const Icon(
@@ -764,21 +928,126 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                       Expanded(
                                         child:
                                             isWSO2Start
-                                                ? GestureDetector(
-                                                  onTap:
-                                                      () => _selectLocation(
-                                                        false,
+                                                ? TypeAheadField<
+                                                  Map<String, dynamic>
+                                                >(
+                                                  textFieldConfiguration: TextFieldConfiguration(
+                                                    controller:
+                                                        dropOffController,
+                                                    decoration: InputDecoration(
+                                                      labelText: 'End-Point',
+                                                      hintText:
+                                                          'Search or tap map icon',
+                                                      border:
+                                                          const OutlineInputBorder(),
+                                                      contentPadding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 20,
+                                                            vertical: 15,
+                                                          ),
+                                                      suffixIcon: IconButton(
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .location_on_sharp,
+                                                        ),
+                                                        onPressed:
+                                                            () =>
+                                                                _selectLocation(
+                                                                  false,
+                                                                ),
                                                       ),
-                                                  child: AbsorbPointer(
-                                                    child: TextFormField(
-                                                      controller:
-                                                          dropOffController,
-                                                      focusNode:
-                                                          dropOffFocusNode,
-                                                      decoration: const InputDecoration(
+                                                    ),
+                                                  ),
+                                                  suggestionsCallback: (
+                                                    pattern,
+                                                  ) async {
+                                                    if (pattern.length >= 3) {
+                                                      return await searchSriLankaPlaces(
+                                                        pattern,
+                                                      );
+                                                    }
+                                                    return [];
+                                                  },
+                                                  itemBuilder: (
+                                                    context,
+                                                    suggestion,
+                                                  ) {
+                                                    return ListTile(
+                                                      leading: const Icon(
+                                                        Icons.location_on,
+                                                      ),
+                                                      title: Text(
+                                                        suggestion['description'],
+                                                      ),
+                                                      subtitle: const Text(
+                                                        'Sri Lanka',
+                                                      ),
+                                                    );
+                                                  },
+                                                  onSuggestionSelected: (
+                                                    suggestion,
+                                                  ) {
+                                                    setState(() {
+                                                      dropOffController.text =
+                                                          suggestion['description'];
+                                                      dropOffPlaceId =
+                                                          suggestion['place_id'];
+                                                      if (!suggestion['description']
+                                                              .toLowerCase()
+                                                              .contains(
+                                                                'wso2',
+                                                              ) &&
+                                                          pickUpController
+                                                              .text
+                                                              .isEmpty) {
+                                                        pickUpController.text =
+                                                            wso2Address;
+                                                        pickUpPlaceId = null;
+                                                        isWSO2Start = true;
+                                                        isPickUpLocked = true;
+                                                        isDropOffLocked = false;
+                                                      } else {
+                                                        isPickUpLocked = false;
+                                                        isDropOffLocked = false;
+                                                      }
+                                                    });
+                                                  },
+                                                  noItemsFoundBuilder:
+                                                      (
+                                                        context,
+                                                      ) => const Padding(
+                                                        padding: EdgeInsets.all(
+                                                          8.0,
+                                                        ),
+                                                        child: Text(
+                                                          'No locations found',
+                                                        ),
+                                                      ),
+                                                  suggestionsBoxDecoration:
+                                                      SuggestionsBoxDecoration(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                        elevation: 4,
+                                                        color: Colors.white,
+                                                        constraints:
+                                                            const BoxConstraints(
+                                                              maxHeight: 200,
+                                                            ),
+                                                      ),
+                                                  debounceDuration:
+                                                      const Duration(
+                                                        milliseconds: 300,
+                                                      ),
+                                                )
+                                                : TextFormField(
+                                                  controller: dropOffController,
+                                                  enabled: false,
+                                                  decoration:
+                                                      const InputDecoration(
                                                         labelText: 'End-Point',
-                                                        hintText:
-                                                            'Tap to select location',
+                                                        hintText: 'Destination',
                                                         border:
                                                             OutlineInputBorder(),
                                                         contentPadding:
@@ -786,40 +1055,11 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                                               horizontal: 20,
                                                               vertical: 15,
                                                             ),
-                                                        suffixIcon: const Icon(
-                                                          Icons.map,
+                                                        suffixIcon: Icon(
+                                                          Icons.lock,
                                                         ),
                                                       ),
-                                                      readOnly: true,
-                                                      validator: (value) {
-                                                        if (value == null ||
-                                                            value.isEmpty) {
-                                                          return 'Please enter a destination';
-                                                        }
-                                                        return null;
-                                                      },
-                                                    ),
-                                                  ),
-                                                )
-                                                : TextFormField(
-                                                  controller: dropOffController,
-                                                  enabled: false,
-                                                  focusNode: dropOffFocusNode,
-                                                  decoration: InputDecoration(
-                                                    labelText: 'End-Point',
-                                                    hintText: 'Destination',
-                                                    border:
-                                                        const OutlineInputBorder(),
-                                                    contentPadding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 20,
-                                                          vertical: 15,
-                                                        ),
-                                                    suffixIcon: const Icon(
-                                                      Icons.lock,
-                                                    ),
-                                                  ),
-                                                  readOnly: true,
+                                                  // readOnly: true,
                                                   validator: (value) {
                                                     if (value == null ||
                                                         value.isEmpty) {
@@ -885,6 +1125,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                                 ),
                                                 onMapCreated: (controller) {
                                                   mapController = controller;
+                                                  updateMapTheme(controller);
                                                 },
                                                 zoomControlsEnabled: true,
                                                 mapToolbarEnabled: false,
@@ -1113,7 +1354,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                       ),
                                     ],
                                   ),
-
                                   CustomButton(
                                     text: 'Post Ride',
                                     onPressed: _postRide,
@@ -1147,3 +1387,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
     );
   }
 }
+
+
+//completed - need to connect google map api to backend

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:mobile_frontend/config/constant.dart';
 import 'package:mobile_frontend/models/RideData.dart';
 import 'package:mobile_frontend/services/ride_services.dart';
@@ -25,8 +26,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   void initState() {
     super.initState();
     getUserDetails();
-    fetchRides();
-    fetchLastTrips(); // Initialize last trips
+    refreshData(); // Trigger refresh on load
   }
 
   Future<void> getUserDetails() async {
@@ -37,12 +37,36 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   }
 
   Future<void> fetchRides() async {
-    List<Ride> fetchedRides = await RideService.fetchDriverRides();
-    print(fetchedRides);
-    setState(() {
-      rides = fetchedRides;
-      isLoading = false;
-    });
+    try {
+      List<Ride> fetchedRides = await RideService.fetchDriverRides();
+
+      // Get today and tomorrow in DD/MM/YYYY format
+      final DateFormat formatter = DateFormat('dd/MM/yyyy');
+      final String today = formatter.format(DateTime.now());
+      final String tomorrow = formatter.format(
+        DateTime.now().add(Duration(days: 1)),
+      );
+
+      // Filter rides for today and tomorrow
+      List<Ride> filteredRides =
+          fetchedRides.where((ride) {
+            return ride.date == today || ride.date == tomorrow;
+          }).toList();
+
+      print('Filtered rides: $filteredRides');
+      setState(() {
+        rides = filteredRides;
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error fetching rides: $e');
+      setState(() {
+        isLoading = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error fetching rides: $e')));
+    }
   }
 
   Future<void> fetchLastTrips() async {
@@ -68,7 +92,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     setState(() {
       isLoading = true;
     });
-    await Future.wait([fetchRides(), fetchLastTrips()]); // Refresh both sections
+    await Future.wait([fetchRides(), fetchLastTrips()]);
     setState(() {
       isLoading = false;
     });
@@ -84,9 +108,11 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20.0,
-                vertical: 50,
+              padding: const EdgeInsets.only(
+                left: 20.0,
+                right: 20.0,
+                top: 50,
+                bottom: 30,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -130,24 +156,24 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
               child: Container(
                 width: double.infinity,
                 padding: EdgeInsets.only(
-                  top: 30.0,
+                  top: 20.0,
                   bottom: 10.0,
                   left: 15.0,
                   right: 15.0,
                 ),
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.only(topLeft: Radius.circular(40)),
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(20)),
                 ),
                 child: RefreshIndicator(
-                  onRefresh: refreshData, // Trigger refresh for both sections
+                  onRefresh: refreshData,
                   child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(), // Ensure scrollable for refresh
+                    physics: const AlwaysScrollableScrollPhysics(),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          "Your routes",
+                          "Upcoming Rides",
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -158,43 +184,41 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                         isLoading
                             ? Center(child: CircularProgressIndicator())
                             : rides.isEmpty
-                                ? Center(child: Text('No active rides found'))
-                                : Center(
+                            ? Center(child: Text('No active rides found'))
+                            : SizedBox(
+                              height: 210,
+                              child: ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: rides.length,
+                                itemBuilder: (context, index) {
+                                  final ride = rides[index];
+                                  return Padding(
+                                    padding: const EdgeInsets.only(
+                                      right: 15.0,
+                                      left: 0,
+                                    ),
                                     child: SizedBox(
-                                      height:
-                                          210, // Adjust height based on RouteCard size
-                                      child: ListView.builder(
-                                        scrollDirection: Axis.horizontal,
-                                        itemCount: rides.length,
-                                        itemBuilder: (context, index) {
-                                          final ride = rides[index];
-                                          return Padding(
-                                            padding: const EdgeInsets.only(
-                                              right: 15.0,
-                                              left: 0,
-                                            ),
-                                            child: SizedBox(
-                                              width: screenWidth * 1, // 80% of screen width per card
-                                              child: RouteCard(
-                                                startTime: ride.startTime,
-                                                duration: ride.duration,
-                                                startLocation: ride.pickupLocation,
-                                                endLocation: ride.dropoffLocation,
-                                                peopleJoined: '${ride.seatingCapacity - ride.seat}/${ride.seatingCapacity}',
-                                                price: '\$45.00',
-                                                onStartPressed: () {
-                                                  print('Start pressed');
-                                                },
-                                              ),
-                                            ),
-                                          );
+                                      width: screenWidth * 0.95,
+                                      child: RouteCard(
+                                        startTime: ride.startTime,
+                                        duration: ride.duration,
+                                        startLocation: ride.pickupLocation,
+                                        endLocation: ride.dropoffLocation,
+                                        peopleJoined:
+                                            '${ride.passengerCount}/${ride.seatingCapacity}',
+                                        price: '\$45.00',
+                                        onStartPressed: () {
+                                          print('Start pressed ${ride.id}');
                                         },
                                       ),
                                     ),
-                                  ),
+                                  );
+                                },
+                              ),
+                            ),
                         SizedBox(height: 30),
                         const Text(
-                          "Your last trip",
+                          "Last Rides",
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -208,9 +232,10 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                           height: 1.0,
                         ),
                         Column(
-                          children: lastTrips
-                              .map((trip) => LastTripItem(trip: trip))
-                              .toList(),
+                          children:
+                              lastTrips
+                                  .map((trip) => LastTripItem(trip: trip))
+                                  .toList(),
                         ),
                       ],
                     ),
@@ -224,5 +249,3 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     );
   }
 }
-
-//Finishing one completed 

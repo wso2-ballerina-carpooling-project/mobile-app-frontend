@@ -72,7 +72,6 @@ class _FindARideScreen extends State<FindARideScreen> {
     double maxDistanceMeters,
   ) {
     for (var polyPoint in polyline) {
-      print(polyPoint);
       double distance = _calculateDistance(point, polyPoint);
       if (distance <= maxDistanceMeters) {
         return true;
@@ -105,6 +104,7 @@ class _FindARideScreen extends State<FindARideScreen> {
     try {
       // Convert pickup address to coordinates
       List<Location> locations = await locationFromAddress(pickupAddress);
+
       print(locations);
       if (locations.isEmpty) {
         print('Could not geocode pickup address: $pickupAddress');
@@ -126,7 +126,7 @@ class _FindARideScreen extends State<FindARideScreen> {
           }).toList();
 
       // Check if pickup point is near the polyline (within 100 meters)
-      const double maxDistanceMeters = 500.0;
+      const double maxDistanceMeters = 200.0;
       return isPointNearPolyline(pickupPoint, polyline, maxDistanceMeters);
     } catch (e) {
       print('Error checking ride match: $e');

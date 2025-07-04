@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:mobile_frontend/config/constant.dart';
+
+//complete not tested
 
 class SelectLocation extends StatefulWidget {
   final LatLng? initialLocation;
@@ -28,6 +31,19 @@ class _SelectLocationState extends State<SelectLocation> {
   
   // Store current camera position
   CameraPosition? _currentCameraPosition;
+
+  Future<void> updateMapTheme(GoogleMapController controller) async {
+    try {
+      String styleJson = await getJsonFileFromThemes('themes/map_style.json');
+      await controller.setMapStyle(styleJson);
+    } catch (e) {
+      debugPrint('Error setting map style: $e');
+    }
+  }
+
+  Future<String> getJsonFileFromThemes(String path) async {
+    return await rootBundle.loadString(path);
+  }
 
   @override
   void initState() {
@@ -277,6 +293,7 @@ class _SelectLocationState extends State<SelectLocation> {
             onMapCreated: (controller) {
               mapController = controller;
               _controller.complete(controller);
+              updateMapTheme(controller);
               
               // Set initial location if available
               if (_selectedLocation != null) {
@@ -413,7 +430,6 @@ class _SelectLocationState extends State<SelectLocation> {
             ),
           ),
           
-          // Floating Button for current location
           Positioned(
             bottom: 210,
             right: 20,
@@ -447,7 +463,6 @@ class _SelectLocationState extends State<SelectLocation> {
   }
 }
 
-// Extension to help with shadow decoration
 extension ShadowExtension on BoxShadow {
   Decoration toBorder() {
     return BoxDecoration(

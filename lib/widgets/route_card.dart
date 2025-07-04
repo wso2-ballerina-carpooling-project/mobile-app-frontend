@@ -48,10 +48,10 @@ class RouteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const cardColor = Color(0xFF4A90E2); // Blue from the image
-    const textColor = Colors.white;
-    const buttonColor = Color(0xFF50E3C2); // Greenish button color
-    const infoBgColor = Color(0x33FFFFFF); // Semi-transparent white for background
+    const cardColor = Color(0xFFf1f3f4); // Blue from the image
+    const textColor = Colors.black;
+    const buttonColor = Color(0xFF1976d2 ); // Greenish button color
+    const infoBgColor = Color(0xFFe5e7eb ); // Semi-transparent white for background
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -125,45 +125,51 @@ class RouteCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // People Joined
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: infoBgColor,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  '$peopleJoined joined',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: textColor,
+              Row(
+                children: [
+
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: infoBgColor,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '$peopleJoined joined',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: textColor,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              // Price
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: infoBgColor,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  price,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: textColor,
+                  const SizedBox(width: 8),
+                  // Price
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: infoBgColor,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      price,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: textColor,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-              // Start Button
+              
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: buttonColor,
-                  foregroundColor: textColor,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  minimumSize: const Size(80, 30),
                 ),
                 onPressed: onStartPressed,
                 child: const Text(
