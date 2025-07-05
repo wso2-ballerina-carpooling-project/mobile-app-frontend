@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class Ride {
   final String rideId;
@@ -10,10 +10,12 @@ class Ride {
   final String duration;
   final String distance;
   final String status;
-  final int seatingCapacity; // From driverDetails in JWT payload
-  final int seat; // From driverDetails in JWT payload
-  final int passengerCount; // From passengers array length
+  final int seatingCapacity;
+  final int seat;
+  final int passengerCount;
   final String id;
+  final List<Passenger> passengers; // Added for waypoints
+  final Route route; // Added for polyline
 
   Ride({
     required this.rideId,
@@ -29,6 +31,8 @@ class Ride {
     required this.seat,
     required this.passengerCount,
     required this.id,
+    required this.passengers,
+    required this.route,
   });
 
   factory Ride.fromJson(Map<String, dynamic> json, int seatingCapacity) {
@@ -46,6 +50,61 @@ class Ride {
       seatingCapacity: seatingCapacity,
       passengerCount: (json['passengers'] as List<dynamic>).length,
       id: json['id'] as String,
+      passengers: (json['passengers'] as List<dynamic>)
+          .map((p) => Passenger.fromJson(p))
+          .toList(),
+      route: Route.fromJson(json['route']),
+    );
+  }
+}
+
+class Passenger {
+  final String passengerId;
+  final String waypoint;
+  final DateTime bookingTime;
+  final String status;
+
+  Passenger({
+    required this.passengerId,
+    required this.waypoint,
+    required this.bookingTime,
+    required this.status,
+  });
+
+  factory Passenger.fromJson(Map<String, dynamic> json) {
+    return Passenger(
+      passengerId: json['passengerId'],
+      waypoint: json['waypoint'],
+      bookingTime: DateTime.parse(json['bookingTime']),
+      status: json['status'],
+    );
+  }
+}
+
+class Route {
+  final int index;
+  final String duration;
+  final String distance;
+  final List<LatLng> polyline;
+
+  Route({
+    required this.index,
+    required this.duration,
+    required this.distance,
+    required this.polyline,
+  });
+
+  factory Route.fromJson(Map<String, dynamic> json) {
+    return Route(
+      index: json['index'] as int,
+      duration: json['duration'] as String,
+      distance: json['distance'] as String,
+      polyline: (json['polyline'] as List<dynamic>)
+          .map((p) => LatLng(
+                double.parse(p['latitude']),
+                double.parse(p['longitude']),
+              ))
+          .toList(),
     );
   }
 }

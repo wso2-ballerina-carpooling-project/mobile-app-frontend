@@ -75,4 +75,217 @@ class RideService {
       return [];
     }
   }
-}
+
+ static Future<List<Ride>> fetchDriverCompleted(FlutterSecureStorage storage) async {
+    try {
+      String? token = await storage.read(key: 'jwt_token');
+      if (token == null) return [];
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/completedDriverRide'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      print('Response status code: ${response.statusCode}');
+
+      Map<String, dynamic> payload = Jwt.parseJwt(token);
+      int seatingCapacity = int.parse(payload['driverDetails']['seatingCapacity'].toString());
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> rideList = data['rides'];
+
+        rideList.sort((a, b) {
+          DateTime dateA = _parseDate(a['date']);
+          DateTime dateB = _parseDate(b['date']);
+          return dateB.compareTo(dateA); // Latest date first
+        });
+
+        return rideList
+            .map((rideJson) => Ride.fromJson(rideJson, seatingCapacity))
+            .where((ride) => ride.status == 'completed')
+            .toList();
+      } else {
+        print('Failed to fetch rides: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      print('Error fetching rides: $e');
+      return [];
+    }
+  }
+
+  static Future<List<Ride>> fetchDriverOngoing(FlutterSecureStorage storage) async {
+    try {
+      String? token = await storage.read(key: 'jwt_token');
+      if (token == null) return [];
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/ongoingDriverRide'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> rideList = data['rides'];
+
+        rideList.sort((a, b) {
+          DateTime dateA = _parseDate(a['date']);
+          DateTime dateB = _parseDate(b['date']);
+          return dateB.compareTo(dateA);
+        });
+
+        return rideList
+            .map((rideJson) => Ride.fromJson(rideJson, 0)) // Adjust seatingCapacity if needed
+            .where((ride) => ride.status == 'ongoing')
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching ongoing rides: $e');
+      return [];
+    }
+  }
+
+  static Future<List<Ride>> fetchDriverCanceled(FlutterSecureStorage storage) async {
+    try {
+      String? token = await storage.read(key: 'jwt_token');
+      if (token == null) return [];
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/canceledDriverRide'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> rideList = data['rides'];
+
+        rideList.sort((a, b) {
+          DateTime dateA = _parseDate(a['date']);
+          DateTime dateB = _parseDate(b['date']);
+          return dateB.compareTo(dateA);
+        });
+
+        return rideList
+            .map((rideJson) => Ride.fromJson(rideJson, 0)) // Adjust seatingCapacity if needed
+            .where((ride) => ride.status == 'canceled')
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching canceled rides: $e');
+      return [];
+    }
+  }
+
+  static Future<List<Ride>> fetchPassengerOngoing(FlutterSecureStorage storage) async {
+    try {
+      String? token = await storage.read(key: 'jwt_token');
+      if (token == null) return [];
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/ongoingPassengerRide'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> rideList = data['rides'];
+
+        rideList.sort((a, b) {
+          DateTime dateA = _parseDate(a['date']);
+          DateTime dateB = _parseDate(b['date']);
+          return dateB.compareTo(dateA);
+        });
+
+        return rideList
+            .map((rideJson) => Ride.fromJson(rideJson, 0))
+            .where((ride) => ride.status == 'ongoing')
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching passenger ongoing rides: $e');
+      return [];
+    }
+  }
+
+  static Future<List<Ride>> fetchPassengerCompleted(FlutterSecureStorage storage) async {
+    try {
+      String? token = await storage.read(key: 'jwt_token');
+      if (token == null) return [];
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/completedPassengerRide'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> rideList = data['rides'];
+
+        rideList.sort((a, b) {
+          DateTime dateA = _parseDate(a['date']);
+          DateTime dateB = _parseDate(b['date']);
+          return dateB.compareTo(dateA);
+        });
+
+        return rideList
+            .map((rideJson) => Ride.fromJson(rideJson, 0))
+            .where((ride) => ride.status == 'completed')
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching passenger completed rides: $e');
+      return [];
+    }
+  }
+
+  static Future<List<Ride>> fetchPassengerCanceled(FlutterSecureStorage storage) async {
+    try {
+      String? token = await storage.read(key: 'jwt_token');
+      if (token == null) return [];
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/canceledPassengerRide'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> rideList = data['rides'];
+
+        rideList.sort((a, b) {
+          DateTime dateA = _parseDate(a['date']);
+          DateTime dateB = _parseDate(b['date']);
+          return dateB.compareTo(dateA);
+        });
+
+        return rideList
+            .map((rideJson) => Ride.fromJson(rideJson, 0))
+            .where((ride) => ride.status == 'canceled')
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching passenger canceled rides: $e');
+      return [];
+    }
+  }
+
+  static DateTime _parseDate(String dateStr) {
+    try {
+      final parts = dateStr.split('/');
+      if (parts.length != 3) throw FormatException('Invalid date format: $dateStr');
+      final day = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final year = int.parse(parts[2]);
+      return DateTime(year, month, day);
+    } catch (e) {
+      print('Error parsing date $dateStr: $e');
+      return DateTime(1970, 1, 1);
+    }
+  }
+  }
