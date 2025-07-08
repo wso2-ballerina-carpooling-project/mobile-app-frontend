@@ -7,6 +7,7 @@ class CustomDropdownField extends StatelessWidget {
   final Function(String?) onChanged;
   final String? hintText;
   final Widget? suffixIcon;
+  final String? Function(String?)? validator; 
 
   const CustomDropdownField({
     super.key,
@@ -16,6 +17,7 @@ class CustomDropdownField extends StatelessWidget {
     this.value,
     this.hintText,
     this.suffixIcon,
+    this.validator, 
   });
 
   @override
@@ -57,14 +59,17 @@ class CustomDropdownField extends StatelessWidget {
                 suffixIcon: suffixIcon,
                 contentPadding: EdgeInsets.zero,
                 isDense: true,
+               
               ),
               items: options.map((String option) {
                 return DropdownMenuItem<String>(
                   value: option,
                   child: Text(option),
+                  
                 );
               }).toList(),
               onChanged: onChanged,
+              validator: validator, 
               isExpanded: true,
               icon: const Icon(Icons.arrow_drop_down),
               iconSize: 24,

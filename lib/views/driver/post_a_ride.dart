@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:mobile_frontend/services/map_services.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:mobile_frontend/config/constant.dart';
 import 'package:mobile_frontend/services/ride_services.dart';
+import 'package:mobile_frontend/views/common/select_location.dart';
 import 'package:mobile_frontend/widgets/custom_input_field.dart';
 import 'package:mobile_frontend/widgets/custom_button.dart';
 import 'package:mobile_frontend/widgets/dropdown_input.dart';
@@ -10,7 +13,6 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:flutter_typeahead/flutter_typeahead.dart';
 
 class RidePostScreen extends StatefulWidget {
   const RidePostScreen({Key? key}) : super(key: key);
@@ -28,17 +30,16 @@ class _RidePostScreenState extends State<RidePostScreen> {
   final TextEditingController dateController = TextEditingController();
   final TextEditingController vehicleRegController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  final _storage = FlutterSecureStorage(); // For JWT token
+  final _storage = const FlutterSecureStorage();
   bool _isPosting = false;
-
-  // Place search controllers
-  final FocusNode pickUpFocusNode = FocusNode();
-  final FocusNode dropOffFocusNode = FocusNode();
+  bool isPickUpLocked = false;
+  bool isDropOffLocked = false;
+  bool isWSO2Start = false;
 
   // Google Maps Controller
   GoogleMapController? mapController;
   CameraPosition initialCameraPosition = const CameraPosition(
-    target: LatLng(0, 0), // Will be updated with user's location
+    target: LatLng(6.7734, 79.8825), // WSO2 coordinates
     zoom: 14.0,
   );
 
@@ -54,63 +55,110 @@ class _RidePostScreenState extends State<RidePostScreen> {
   List<String> routeDurations = [];
   List<String> routeDistances = [];
 
+  String? pickUpPlaceId;
+  String? dropOffPlaceId;
+
+  // WSO2 specific variables
+  final String wso2Address = "WSO2, Bauddhaloka Mawatha, Colombo, Sri Lanka";
+  final LatLng wso2Coordinates = const LatLng(6.8953284, 79.8546711);
+
   @override
   void initState() {
     super.initState();
     _determinePosition();
-    // Load the routes automatically after a brief delay to allow the screen to initialize
-    Future.delayed(const Duration(milliseconds: 500), () {
-      _showRoutes();
-    });
   }
 
-  // Set initial map position to show Sri Lanka
   Future<void> _determinePosition() async {
-    // Use Moratuwa coordinates for initial position
     setState(() {
-      initialCameraPosition = const CameraPosition(
-        target: LatLng(6.7734, 79.8825), // Moratuwa
-        zoom: 12.0,
-      );
-
-      // Pre-fill pickup location
-      pickUpController.text = "Moratuwa, Sri Lanka";
-      dropOffController.text = "Pettah, Colombo, Sri Lanka";
+      pickUpController.text = "";
+      dropOffController.text = "";
+      isWSO2Start = true;
+      isPickUpLocked = false;
+      isDropOffLocked = false;
     });
   }
 
-  // Get address from coordinates
-  Future<void> _getAddressFromLatLng(double lat, double lng) async {
+  Future<String?> _getAddressFromLatLng(double lat, double lng) async {
     try {
       List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng);
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks[0];
-        String address = '${place.street}, ${place.locality}';
-        pickUpController.text = address;
+        String address = '${place.street}, ${place.locality}, ${place.country}';
+        return address;
       }
     } catch (e) {
       print('Error getting address: $e');
-    }
-  }
-
-  // Get coordinates from address
-  Future<LatLng?> _getCoordinatesFromAddress(String address) async {
-    try {
-      List<Location> locations = await locationFromAddress(address);
-      if (locations.isNotEmpty) {
-        return LatLng(locations[0].latitude, locations[0].longitude);
-      }
-    } catch (e) {
-      print('Error getting coordinates: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error getting address: $e')));
     }
     return null;
   }
 
-  // Store selected place IDs
-  String? pickUpPlaceId;
-  String? dropOffPlaceId;
+  Future<void> _selectLocation(bool isPickup) async {
+    final LatLng? selectedLocation = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => SelectLocation(
+              initialLocation:
+                  isPickup
+                      ? _selectedLocationFromLatLng(pickUpController.text)
+                      : _selectedLocationFromLatLng(dropOffController.text),
+            ),
+      ),
+    );
 
-  // Show routes on map
+    if (selectedLocation != null) {
+      String? address = await _getAddressFromLatLng(
+        selectedLocation.latitude,
+        selectedLocation.longitude,
+      );
+      setState(() {
+        if (isPickup) {
+          pickUpController.text =
+              address ??
+              "Selected Location (${selectedLocation.latitude}, ${selectedLocation.longitude})";
+          pickUpPlaceId = null; // No place ID for map-selected location
+          isWSO2Start = pickUpController.text.toLowerCase().contains('wso2');
+          if (!isWSO2Start && dropOffController.text.isEmpty) {
+            dropOffController.text = wso2Address;
+            dropOffPlaceId = null;
+            isDropOffLocked = true;
+            isPickUpLocked = false;
+          } else {
+            isDropOffLocked = false;
+            isPickUpLocked = false;
+          }
+        } else {
+          dropOffController.text =
+              address ??
+              "Selected Location (${selectedLocation.latitude}, ${selectedLocation.longitude})";
+          dropOffPlaceId = null; // No place ID for map-selected location
+          if (!dropOffController.text.toLowerCase().contains('wso2') &&
+              pickUpController.text.isEmpty) {
+            pickUpController.text = wso2Address;
+            pickUpPlaceId = null;
+            isWSO2Start = true;
+            isPickUpLocked = true;
+            isDropOffLocked = false;
+          } else {
+            isPickUpLocked = false;
+            isDropOffLocked = false;
+          }
+        }
+      });
+      await _showRoutes();
+    }
+  }
+
+  LatLng? _selectedLocationFromLatLng(String address) {
+    if (address.toLowerCase() == wso2Address.toLowerCase()) {
+      return wso2Coordinates;
+    }
+    return null; // Default to initial map position if not WSO2
+  }
+
   Future<void> _showRoutes() async {
     setState(() {
       isLoading = true;
@@ -118,72 +166,29 @@ class _RidePostScreenState extends State<RidePostScreen> {
     });
 
     try {
-      LatLng? originLatLng;
-      LatLng? destLatLng;
+      LatLng originLatLng =
+          _selectedLocationFromLatLng(pickUpController.text) ?? wso2Coordinates;
+      LatLng destLatLng =
+          _selectedLocationFromLatLng(dropOffController.text) ??
+          wso2Coordinates;
 
-      // Try to get coordinates from place IDs first if available
-      if (pickUpPlaceId != null) {
-        originLatLng = await getPlaceDetails(pickUpPlaceId!);
+      if (pickUpController.text != wso2Address) {
+        List<Location> locations = await locationFromAddress(
+          "${pickUpController.text}, Sri Lanka",
+        );
+        if (locations.isNotEmpty) {
+          originLatLng = LatLng(locations[0].latitude, locations[0].longitude);
+        }
       }
-
-      if (dropOffPlaceId != null) {
-        destLatLng = await getPlaceDetails(dropOffPlaceId!);
-      }
-
-      // Fall back to hardcoded coordinates or geocoding
-      if (originLatLng == null) {
-        if (pickUpController.text.isEmpty) {
-          // Default to Moratuwa if empty
-          originLatLng = const LatLng(6.7734, 79.8825);
-          pickUpController.text = "Moratuwa, Sri Lanka";
-        } else {
-          // Try geocoding the address
-          try {
-            List<Location> locations = await locationFromAddress(
-              "${pickUpController.text}, Sri Lanka", // Append Sri Lanka to focus search
-            );
-            if (locations.isNotEmpty) {
-              originLatLng = LatLng(
-                locations[0].latitude,
-                locations[0].longitude,
-              );
-            } else {
-              // Default to Moratuwa if geocoding fails
-              originLatLng = const LatLng(6.7734, 79.8825);
-            }
-          } catch (e) {
-            originLatLng = const LatLng(6.7734, 79.8825);
-          }
+      if (dropOffController.text != wso2Address) {
+        List<Location> locations = await locationFromAddress(
+          "${dropOffController.text}, Sri Lanka",
+        );
+        if (locations.isNotEmpty) {
+          destLatLng = LatLng(locations[0].latitude, locations[0].longitude);
         }
       }
 
-      if (destLatLng == null) {
-        if (dropOffController.text.isEmpty) {
-          // Default to Pettah if empty
-          destLatLng = const LatLng(6.9344, 79.8428);
-          dropOffController.text = "Pettah, Colombo, Sri Lanka";
-        } else {
-          // Try geocoding the address
-          try {
-            List<Location> locations = await locationFromAddress(
-              "${dropOffController.text}, Sri Lanka", // Append Sri Lanka to focus search
-            );
-            if (locations.isNotEmpty) {
-              destLatLng = LatLng(
-                locations[0].latitude,
-                locations[0].longitude,
-              );
-            } else {
-              // Default to Pettah if geocoding fails
-              destLatLng = const LatLng(6.9344, 79.8428);
-            }
-          } catch (e) {
-            destLatLng = const LatLng(6.9344, 79.8428);
-          }
-        }
-      }
-
-      // Set the camera position to show both markers
       LatLngBounds bounds = LatLngBounds(
         southwest: LatLng(
           originLatLng.latitude < destLatLng.latitude
@@ -205,15 +210,11 @@ class _RidePostScreenState extends State<RidePostScreen> {
 
       await _getDirections(originLatLng, destLatLng);
 
-      LatLng originLatLngMark = originLatLng;
-      LatLng desLat = destLatLng;
-
-      // Add markers
       setState(() {
         markers = {
           Marker(
             markerId: const MarkerId('origin'),
-            position: originLatLngMark,
+            position: originLatLng,
             icon: BitmapDescriptor.defaultMarkerWithHue(
               BitmapDescriptor.hueGreen,
             ),
@@ -224,7 +225,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
           ),
           Marker(
             markerId: const MarkerId('destination'),
-            position: desLat,
+            position: destLatLng,
             icon: BitmapDescriptor.defaultMarkerWithHue(
               BitmapDescriptor.hueRed,
             ),
@@ -235,7 +236,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
           ),
         };
 
-        // Animate camera to show both markers
         mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
       });
     } catch (e) {
@@ -250,10 +250,8 @@ class _RidePostScreenState extends State<RidePostScreen> {
     }
   }
 
-  // Get directions from Google Directions API
   Future<void> _getDirections(LatLng origin, LatLng destination) async {
-    const apiKey =
-        'AIzaSyC8GlueGNwtpZjPUjF6SWnxUHyC5GA82KE'; // Replace with your actual API key
+    const apiKey = 'AIzaSyC8GlueGNwtpZjPUjF6SWnxUHyC5GA82KE';
     final url = Uri.parse(
       'https://maps.googleapis.com/maps/api/directions/json?'
       'origin=${origin.latitude},${origin.longitude}'
@@ -270,7 +268,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
         if (data['status'] == 'OK') {
           final routes = data['routes'] as List;
 
-          // Clear previous routes
           setState(() {
             polylines.clear();
             routeOptions.clear();
@@ -278,19 +275,15 @@ class _RidePostScreenState extends State<RidePostScreen> {
             routeDistances.clear();
           });
 
-          // Process each route
           for (int i = 0; i < routes.length; i++) {
             final route = routes[i];
             final legs = route['legs'][0];
-            final steps = legs['steps'] as List;
             final String duration = legs['duration']['text'];
             final String distance = legs['distance']['text'];
 
-            // Store route info
             routeDurations.add(duration);
             routeDistances.add(distance);
 
-            // Decode polyline
             final points = route['overview_polyline']['points'];
             final polylinePoints = PolylinePoints().decodePolyline(points);
             List<LatLng> polylineCoordinates = [];
@@ -314,7 +307,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
             });
           }
 
-          // If no routes were selected, select the first one
           if (selectedRouteIndex >= routeOptions.length) {
             selectedRouteIndex = 0;
           }
@@ -332,12 +324,10 @@ class _RidePostScreenState extends State<RidePostScreen> {
     }
   }
 
-  // Select a route
   void _selectRoute(int index) {
     setState(() {
       selectedRouteIndex = index;
 
-      // Update polyline colors
       for (int i = 0; i < routeOptions.length; i++) {
         final PolylineId polylineId = PolylineId('route$i');
         final Polyline currentPolyline = polylines[polylineId]!;
@@ -352,39 +342,21 @@ class _RidePostScreenState extends State<RidePostScreen> {
     });
   }
 
-  List<String> generateTimes() {
-    List<String> times = [];
-    for (int hour = 0; hour < 24; hour++) {
-      for (int minute = 0; minute < 60; minute += 15) {
-        final hh = hour.toString().padLeft(2, '0');
-        final mm = minute.toString().padLeft(2, '0');
-        times.add('$hh:$mm:00');
-      }
+  List<String> _getTimeOptions() {
+    if (isWSO2Start) {
+      return ['17:00:00', '18:00:00', '19:00:00'];
+    } else {
+      return ['08:00:00', '09:00:00', '10:00:00'];
     }
-    return times;
   }
 
-  @override
-  void dispose() {
-    pickUpController.dispose();
-    dropOffController.dispose();
-    dateController.dispose();
-    vehicleRegController.dispose();
-    pickUpFocusNode.dispose();
-    dropOffFocusNode.dispose();
-    mapController?.dispose();
-    super.dispose();
-  }
-
-  // Search for Sri Lankan places
   Future<List<Map<String, dynamic>>> searchSriLankaPlaces(String query) async {
     if (query.length < 3) return [];
 
-    const apiKey =
-        'AIzaSyBJToHkeu0EhfzRM64HXhCg2lil_Kg9pSE'; // Replace with your actual API key
+    const apiKey = 'AIzaSyBJToHkeu0EhfzRM64HXhCg2lil_Kg9pSE';
     final url = Uri.parse(
       'https://maps.googleapis.com/maps/api/place/autocomplete/json?'
-      'input=$query' // This restricts results to Sri Lanka using country code
+      'input=$query'
       '&components=country:lk'
       '&key=$apiKey',
     );
@@ -393,7 +365,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
         if (data['status'] == 'OK') {
           final predictions = data['predictions'] as List;
           return predictions.map((prediction) {
@@ -402,19 +373,28 @@ class _RidePostScreenState extends State<RidePostScreen> {
               'place_id': prediction['place_id'],
             };
           }).toList();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Place search failed: ${data['status']}')),
+          );
+          return [];
         }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to fetch place suggestions')),
+        );
+        return [];
       }
-      return [];
     } catch (e) {
-      print('Error searching places: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error searching places: $e')));
       return [];
     }
   }
 
-  // Get place details by place ID
   Future<LatLng?> getPlaceDetails(String placeId) async {
-    const apiKey =
-        'AIzaSyC8GlueGNwtpZjPUjF6SWnxUHyC5GA82KE'; // Replace with your actual API key
+    const apiKey = 'AIzaSyC8GlueGNwtpZjPUjF6SWnxUHyC5GA82KE';
     final url = Uri.parse(
       'https://maps.googleapis.com/maps/api/place/details/json?'
       'place_id=$placeId'
@@ -439,7 +419,21 @@ class _RidePostScreenState extends State<RidePostScreen> {
     }
   }
 
+  Future<void> updateMapTheme(GoogleMapController controller) async {
+    try {
+      String styleJson = await getJsonFileFromThemes('themes/map_style.json');
+      await controller.setMapStyle(styleJson);
+    } catch (e) {
+      debugPrint('Error setting map style: $e');
+    }
+  }
+
+  Future<String> getJsonFileFromThemes(String path) async {
+    return await rootBundle.loadString(path);
+  }
+
   Future<void> _postRide() async {
+    // Validate all required fields
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all required fields')),
@@ -447,645 +441,1116 @@ class _RidePostScreenState extends State<RidePostScreen> {
       return;
     }
 
-    setState(() {
-      _isPosting = true;
-    });
-
-    try {
-      // Retrieve JWT token
-      final token = await _storage.read(key: 'jwt_token');
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
-      // Prepare route data
-      final routeData =
-          selectedRouteIndex < routeOptions.length
-              ? {
-                'index': selectedRouteIndex,
-                'duration': routeDurations[selectedRouteIndex],
-                'distance': routeDistances[selectedRouteIndex],
-                'polyline':
-                    routeOptions[selectedRouteIndex]
-                        .map(
-                          (point) => {
-                            'latitude': point.latitude,
-                            'longitude': point.longitude,
-                          },
-                        )
-                        .toList(),
-              }
-              : null;
-
-      // Prepare ride data
-      final rideData = {
-        'pickupLocation': pickUpController.text,
-        'dropoffLocation': dropOffController.text,
-        'date': dateController.text,
-        'startTime': selectedTime ?? '',
-        'returnTime': selectedReturnTime ?? '',
-        'vehicleRegNo': vehicleRegController.text,
-        'route': routeData,
-      };
-
-      // Send POST request
-      final response = await RideService.postRide(rideData, token);
-
-      print(response.body);
-      setState(() {
-        _isPosting = false;
-      });
-
-      if (response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ride posted successfully')),
-        );
-        Navigator.pop(context); // Navigate back on success
-      } else {
-        final errorMessage =
-            jsonDecode(response.body)['message'] ?? 'Failed to post ride';
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(errorMessage)));
-      }
-    } catch (e) {
-      setState(() {
-        // _isLoading = false;
-      });
+    // Additional checks for required fields
+    if (pickUpController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a starting point')),
+      );
+      return;
+    }
+    if (dropOffController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a destination')),
+      );
+      return;
+    }
+    if (dateController.text.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error posting ride: $e')));
+      ).showSnackBar(const SnackBar(content: Text('Please select a date')));
+      return;
     }
+    if (selectedTime == null || selectedTime!.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a time')));
+      return;
+    }
+    if (routeOptions.isEmpty || selectedRouteIndex >= routeOptions.length) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a valid route')),
+      );
+      return;
+    }
+
+    // Validate ride time (must be at least 12 hours in the future)
+    try {
+      final List<String> dateParts = dateController.text.split('/');
+      if (dateParts.length != 3) {
+        throw Exception('Invalid date format');
+      }
+      final int day = int.parse(dateParts[0]);
+      final int month = int.parse(dateParts[1]);
+      final int year = int.parse(dateParts[2]);
+      final List<String> timeParts = (selectedTime ?? '').split(':');
+      if (timeParts.length != 3) {
+        throw Exception('Invalid time format');
+      }
+      final int hour = int.parse(timeParts[0]);
+      final int minute = int.parse(timeParts[1]);
+      final int second = int.parse(timeParts[2]);
+
+      final DateTime rideDateTime = DateTime(
+        year,
+        month,
+        day,
+        hour,
+        minute,
+        second,
+      );
+      final DateTime now = DateTime.now();
+      final DateTime earliestAllowedTime = now.add(const Duration(hours: 12));
+
+      if (rideDateTime.isBefore(earliestAllowedTime)) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (context) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                backgroundColor: Colors.white,
+                elevation: 8,
+                title: const Text(
+                  'Invalid Ride Time',
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                content: const Text(
+                  'Rides must be scheduled at least 12 hours in advance.',
+                  style: TextStyle(color: Colors.black87, fontSize: 16),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(
+                      'OK',
+                      style: TextStyle(
+                        color: linkColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      side: BorderSide(color: linkColor, width: 1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+        );
+        return;
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error parsing date or time: $e')));
+      return;
+    }
+
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.6),
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(5),
+            ),
+            backgroundColor: Colors.white,
+            elevation: 8,
+            title: const Text(
+              'Confirm Ride Post',
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: const Text(
+              'Are you sure you want to post this ride?',
+              style: TextStyle(color: Colors.black87, fontSize: 16),
+            ),
+            actionsPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: linkColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  side: BorderSide(color: linkColor, width: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text(
+                  'Confirm',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  backgroundColor: mainButtonColor,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                ),
+              ),
+            ],
+          ),
+    );
+
+    if (confirm == true) {
+      setState(() {
+        _isPosting = true;
+      });
+
+      try {
+        final token = await _storage.read(key: 'jwt_token');
+        if (token == null) {
+          throw Exception('No authentication token found');
+        }
+        bool waytowork = true;
+        if (pickUpController.text == wso2Address) {
+          waytowork = false;
+        }
+        final routeData =
+            selectedRouteIndex < routeOptions.length
+                ? {
+                  'index': selectedRouteIndex,
+                  'duration': routeDurations[selectedRouteIndex],
+                  'distance': routeDistances[selectedRouteIndex],
+                  'polyline':
+                      routeOptions[selectedRouteIndex]
+                          .map(
+                            (point) => {
+                              'latitude': point.latitude,
+                              'longitude': point.longitude,
+                            },
+                          )
+                          .toList(),
+                }
+                : null;
+
+        final rideData = {
+          'startLocation': pickUpController.text,
+          'endLocation': dropOffController.text,
+          'waytowork': waytowork,
+          'date': dateController.text,
+          'time': selectedTime ?? '',
+          'route': routeData,
+        };
+
+        final response = await RideService.postRide(rideData, token);
+
+        print(response.body);
+        setState(() {
+          _isPosting = false;
+        });
+
+        if (response.statusCode == 201) {
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder:
+                (context) => AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  backgroundColor: Colors.white,
+                  title: const Text(
+                    'Success',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                  content: const Text(
+                    'Ride posted successfully!',
+                    style: TextStyle(color: Colors.black87, fontSize: 16),
+                  ),
+                  actions: [
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        backgroundColor: mainButtonColor,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop(); // Close AlertDialog
+                        Navigator.pop(context); // Navigate back
+                      },
+                      child: const Text(
+                        'Back',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
+          );
+        } else {
+          final errorMessage =
+              jsonDecode(response.body)['message'] ?? 'Failed to post ride';
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder:
+                (context) => AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  backgroundColor: Colors.white,
+                  title: const Text(
+                    'Failure',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                  content: Text(
+                    errorMessage,
+                    style: const TextStyle(color: Colors.black87, fontSize: 16),
+                  ),
+                  actions: [
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop(); // Close dialog
+                        _postRide(); // Retry logic
+                      },
+                      child: const Text(
+                        'Post Again',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
+          );
+        }
+      } catch (e) {
+        setState(() {
+          _isPosting = false;
+        });
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (context) => AlertDialog(
+                title: const Text('Failure'),
+                content: Text('Error posting ride: $e'),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _postRide();
+                    },
+                    child: const Text('Post Again'),
+                  ),
+                ],
+              ),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    pickUpController.dispose();
+    dropOffController.dispose();
+    dateController.dispose();
+    vehicleRegController.dispose();
+    mapController?.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0E2A),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12.0,
-                  vertical: 12,
-                ),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pop(context);
-                      },
-                      child: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                        size: 26,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: 60,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20.0,
+                        vertical: 12,
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Text(
-                        'Post a Ride',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 24,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Body
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Title Card
-                        Container(
-                          width: MediaQuery.of(context).size.width * 0.5,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(16),
-                              topRight: Radius.circular(16),
+                      child: Stack(
+                        children: [
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            child: GestureDetector(
+                              onTap: () => Navigator.pop(context),
+                              child: const Icon(
+                                Icons.arrow_back,
+                                color: Colors.white,
+                                size: 26,
+                              ),
                             ),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Ride Information',
+                          const Positioned(
+                            left: 0,
+                            right: 0,
+                            top: 0,
+                            bottom: 0,
+                            child: Center(
+                              child: Text(
+                                'Post a Ride',
+                                textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                                  fontSize: 24,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w400,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Center(
-                                child: Container(
-                                  height: 2,
-                                  width: 50,
-                                  color: Colors.blue,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Form Card
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.only(
-                              bottomLeft: Radius.circular(16),
-                              bottomRight: Radius.circular(16),
-                              topRight: Radius.circular(16),
                             ),
                           ),
-                          child: Column(
-                            children: [
-                              // Starting point
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.location_on,
-                                    color: Color(0x9C002B5B),
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: TypeAheadFormField(
-                                      textFieldConfiguration:
-                                          TextFieldConfiguration(
-                                            controller: pickUpController,
-                                            focusNode: pickUpFocusNode,
-                                            decoration: const InputDecoration(
-                                              labelText: 'Starting-Point',
-                                              hintText: 'Your Location',
-                                              border: OutlineInputBorder(),
-                                              contentPadding:
-                                                  EdgeInsets.symmetric(
-                                                    horizontal: 20,
-                                                    vertical: 15,
-                                                  ),
-                                            ),
-                                          ),
-                                      suggestionsCallback: (pattern) async {
-                                        return await searchSriLankaPlaces(
-                                          pattern,
-                                        );
-                                      },
-                                      itemBuilder: (context, suggestion) {
-                                        return ListTile(
-                                          leading: const Icon(
-                                            Icons.location_on,
-                                          ),
-                                          title: Text(
-                                            suggestion['description'],
-                                          ),
-                                          subtitle: const Text('Sri Lanka'),
-                                        );
-                                      },
-                                      onSuggestionSelected: (suggestion) {
-                                        pickUpController.text =
-                                            suggestion['description'];
-                                        pickUpPlaceId = suggestion['place_id'];
-                                      },
-                                      noItemsFoundBuilder:
-                                          (context) => const Padding(
-                                            padding: EdgeInsets.all(8.0),
-                                            child: Text(
-                                              'No locations found in Sri Lanka.',
-                                              style: TextStyle(
-                                                color: Colors.black87,
-                                              ),
-                                            ),
-                                          ),
-                                    ),
-                                  ),
-                                ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: MediaQuery.of(context).size.width * 0.5,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
                               ),
-                              const SizedBox(height: 16),
-
-                              // End point
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.location_on_outlined,
-                                    color: Color(0x9C002B5B),
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: TypeAheadFormField(
-                                      textFieldConfiguration:
-                                          TextFieldConfiguration(
-                                            controller: dropOffController,
-                                            focusNode: dropOffFocusNode,
-                                            decoration: const InputDecoration(
-                                              labelText: 'End-Point',
-                                              hintText: 'Destination',
-                                              border: OutlineInputBorder(),
-                                              contentPadding:
-                                                  EdgeInsets.symmetric(
-                                                    horizontal: 20,
-                                                    vertical: 15,
-                                                  ),
-                                            ),
-                                          ),
-                                      suggestionsCallback: (pattern) async {
-                                        return await searchSriLankaPlaces(
-                                          pattern,
-                                        );
-                                      },
-                                      itemBuilder: (context, suggestion) {
-                                        return ListTile(
-                                          leading: const Icon(
-                                            Icons.location_on,
-                                          ),
-                                          title: Text(
-                                            suggestion['description'],
-                                          ),
-                                          subtitle: const Text('Sri Lanka'),
-                                        );
-                                      },
-                                      onSuggestionSelected: (suggestion) {
-                                        dropOffController.text =
-                                            suggestion['description'];
-                                        dropOffPlaceId = suggestion['place_id'];
-                                      },
-                                      noItemsFoundBuilder:
-                                          (context) => const Padding(
-                                            padding: EdgeInsets.all(8.0),
-                                            child: Text(
-                                              'No locations found in Sri Lanka.',
-                                            ),
-                                          ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-
-                              // View Routes Button
-                              CustomButton(
-                                text: 'View Route Options',
-                                onPressed: _showRoutes,
-                              ),
-
-                              // Map for displaying routes
-                              if (isMapVisible) ...[
-                                const SizedBox(height: 16),
-                                Container(
-                                  height: 300,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: Colors.grey.shade300,
-                                    ),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: Stack(
-                                      children: [
-                                        GoogleMap(
-                                          initialCameraPosition:
-                                              initialCameraPosition,
-                                          markers: markers,
-                                          polylines: Set<Polyline>.of(
-                                            polylines.values,
-                                          ),
-                                          onMapCreated: (
-                                            GoogleMapController controller,
-                                          ) {
-                                            mapController = controller;
-                                          },
-                                          zoomControlsEnabled: true,
-                                          mapToolbarEnabled: false,
-                                          myLocationButtonEnabled: false,
-                                        ),
-                                        if (isLoading)
-                                          Container(
-                                            color: Colors.black.withOpacity(
-                                              0.5,
-                                            ),
-                                            child: const Center(
-                                              child: CircularProgressIndicator(
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(16),
+                                  topRight: Radius.circular(16),
                                 ),
-
-                                // Route options
-                                if (routeOptions.isNotEmpty) ...[
-                                  const SizedBox(height: 16),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                                   const Text(
-                                    'Select Route:',
+                                    'Ride Information',
                                     style: TextStyle(
-                                      fontSize: 16,
+                                      fontSize: 18,
                                       fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
-                                  SizedBox(
-                                    height: 120,
-                                    child: ListView.builder(
-                                      scrollDirection: Axis.horizontal,
-                                      itemCount: routeOptions.length,
-                                      itemBuilder: (context, index) {
-                                        return GestureDetector(
-                                          onTap: () => _selectRoute(index),
-                                          child: Container(
-                                            width: 160,
-                                            margin: const EdgeInsets.only(
-                                              right: 10,
-                                            ),
-                                            padding: const EdgeInsets.all(10),
-                                            decoration: BoxDecoration(
-                                              border: Border.all(
-                                                color:
-                                                    index == selectedRouteIndex
-                                                        ? Colors.blue
-                                                        : Colors.grey.shade300,
-                                                width:
-                                                    index == selectedRouteIndex
-                                                        ? 2
-                                                        : 1,
+                                  const SizedBox(height: 4),
+                                  Center(
+                                    child: Container(
+                                      height: 2,
+                                      width: 50,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.only(
+                                  bottomLeft: Radius.circular(16),
+                                  bottomRight: Radius.circular(16),
+                                  topRight: Radius.circular(16),
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.location_on,
+                                        color: Color(0x9C002B5B),
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child:
+                                            isPickUpLocked
+                                                ? TextFormField(
+                                                  controller: pickUpController,
+                                                  decoration:
+                                                      const InputDecoration(
+                                                        labelText:
+                                                            'Starting-Point',
+                                                        hintText:
+                                                            'Your Location',
+                                                        border:
+                                                            OutlineInputBorder(),
+                                                        contentPadding:
+                                                            EdgeInsets.symmetric(
+                                                              horizontal: 20,
+                                                              vertical: 15,
+                                                            ),
+                                                        suffixIcon: Icon(
+                                                          Icons.lock,
+                                                        ),
+                                                      ),
+                                                  readOnly: true,
+                                                  validator: (value) {
+                                                    if (value == null ||
+                                                        value.isEmpty) {
+                                                      return 'Please enter a starting point';
+                                                    }
+                                                    return null;
+                                                  },
+                                                )
+                                                : TypeAheadField<
+                                                  Map<String, dynamic>
+                                                >(
+                                                  textFieldConfiguration: TextFieldConfiguration(
+                                                    controller:
+                                                        pickUpController,
+                                                    decoration: InputDecoration(
+                                                      labelText:
+                                                          'Starting-Point',
+                                                      hintText:
+                                                          'Search or tap map icon',
+                                                      border:
+                                                          const OutlineInputBorder(),
+                                                      contentPadding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 20,
+                                                            vertical: 15,
+                                                          ),
+                                                      suffixIcon: IconButton(
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .location_on_sharp,
+                                                        ),
+                                                        onPressed:
+                                                            () =>
+                                                                _selectLocation(
+                                                                  true,
+                                                                ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  suggestionsCallback: (
+                                                    pattern,
+                                                  ) async {
+                                                    if (pattern.length >= 3) {
+                                                      return await searchSriLankaPlaces(
+                                                        pattern,
+                                                      );
+                                                    }
+                                                    return [];
+                                                  },
+                                                  itemBuilder: (
+                                                    context,
+                                                    suggestion,
+                                                  ) {
+                                                    return ListTile(
+                                                      leading: const Icon(
+                                                        Icons.location_on,
+                                                      ),
+                                                      title: Text(
+                                                        suggestion['description'],
+                                                      ),
+                                                      subtitle: const Text(
+                                                        'Sri Lanka',
+                                                      ),
+                                                    );
+                                                  },
+                                                  onSuggestionSelected: (
+                                                    suggestion,
+                                                  ) {
+                                                    setState(() {
+                                                      pickUpController.text =
+                                                          suggestion['description'];
+                                                      pickUpPlaceId =
+                                                          suggestion['place_id'];
+                                                      isWSO2Start =
+                                                          suggestion['description']
+                                                              .toLowerCase()
+                                                              .contains('wso2');
+                                                      if (!isWSO2Start) {
+                                                        dropOffController.text =
+                                                            wso2Address;
+                                                        dropOffPlaceId = null;
+                                                      }
+                                                    });
+                                                  },
+                                                  noItemsFoundBuilder:
+                                                      (
+                                                        context,
+                                                      ) => const Padding(
+                                                        padding: EdgeInsets.all(
+                                                          8.0,
+                                                        ),
+                                                        child: Text(
+                                                          'No locations found',
+                                                        ),
+                                                      ),
+                                                  suggestionsBoxDecoration:
+                                                      SuggestionsBoxDecoration(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                        elevation: 4,
+                                                        color: Colors.white,
+                                                        constraints:
+                                                            const BoxConstraints(
+                                                              maxHeight: 200,
+                                                            ),
+                                                      ),
+                                                  debounceDuration:
+                                                      const Duration(
+                                                        milliseconds: 300,
+                                                      ),
+                                                ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.location_on_outlined,
+                                        color: Color(0x9C002B5B),
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child:
+                                            isWSO2Start
+                                                ? TypeAheadField<
+                                                  Map<String, dynamic>
+                                                >(
+                                                  textFieldConfiguration: TextFieldConfiguration(
+                                                    controller:
+                                                        dropOffController,
+                                                    decoration: InputDecoration(
+                                                      labelText: 'End-Point',
+                                                      hintText:
+                                                          'Search or tap map icon',
+                                                      border:
+                                                          const OutlineInputBorder(),
+                                                      contentPadding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 20,
+                                                            vertical: 15,
+                                                          ),
+                                                      suffixIcon: IconButton(
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .location_on_sharp,
+                                                        ),
+                                                        onPressed:
+                                                            () =>
+                                                                _selectLocation(
+                                                                  false,
+                                                                ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  suggestionsCallback: (
+                                                    pattern,
+                                                  ) async {
+                                                    if (pattern.length >= 3) {
+                                                      return await searchSriLankaPlaces(
+                                                        pattern,
+                                                      );
+                                                    }
+                                                    return [];
+                                                  },
+                                                  itemBuilder: (
+                                                    context,
+                                                    suggestion,
+                                                  ) {
+                                                    return ListTile(
+                                                      leading: const Icon(
+                                                        Icons.location_on,
+                                                      ),
+                                                      title: Text(
+                                                        suggestion['description'],
+                                                      ),
+                                                      subtitle: const Text(
+                                                        'Sri Lanka',
+                                                      ),
+                                                    );
+                                                  },
+                                                  onSuggestionSelected: (
+                                                    suggestion,
+                                                  ) {
+                                                    setState(() {
+                                                      dropOffController.text =
+                                                          suggestion['description'];
+                                                      dropOffPlaceId =
+                                                          suggestion['place_id'];
+                                                      if (!suggestion['description']
+                                                              .toLowerCase()
+                                                              .contains(
+                                                                'wso2',
+                                                              ) &&
+                                                          pickUpController
+                                                              .text
+                                                              .isEmpty) {
+                                                        pickUpController.text =
+                                                            wso2Address;
+                                                        pickUpPlaceId = null;
+                                                        isWSO2Start = true;
+                                                        isPickUpLocked = true;
+                                                        isDropOffLocked = false;
+                                                      } else {
+                                                        isPickUpLocked = false;
+                                                        isDropOffLocked = false;
+                                                      }
+                                                    });
+                                                  },
+                                                  noItemsFoundBuilder:
+                                                      (
+                                                        context,
+                                                      ) => const Padding(
+                                                        padding: EdgeInsets.all(
+                                                          8.0,
+                                                        ),
+                                                        child: Text(
+                                                          'No locations found',
+                                                        ),
+                                                      ),
+                                                  suggestionsBoxDecoration:
+                                                      SuggestionsBoxDecoration(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                        elevation: 4,
+                                                        color: Colors.white,
+                                                        constraints:
+                                                            const BoxConstraints(
+                                                              maxHeight: 200,
+                                                            ),
+                                                      ),
+                                                  debounceDuration:
+                                                      const Duration(
+                                                        milliseconds: 300,
+                                                      ),
+                                                )
+                                                : TextFormField(
+                                                  controller: dropOffController,
+                                                  enabled: false,
+                                                  decoration:
+                                                      const InputDecoration(
+                                                        labelText: 'End-Point',
+                                                        hintText: 'Destination',
+                                                        border:
+                                                            OutlineInputBorder(),
+                                                        contentPadding:
+                                                            EdgeInsets.symmetric(
+                                                              horizontal: 20,
+                                                              vertical: 15,
+                                                            ),
+                                                        suffixIcon: Icon(
+                                                          Icons.lock,
+                                                        ),
+                                                      ),
+                                                  validator: (value) {
+                                                    if (value == null ||
+                                                        value.isEmpty) {
+                                                      return 'Please enter a destination';
+                                                    }
+                                                    return null;
+                                                  },
+                                                ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: ElevatedButton(
+                                      onPressed: _showRoutes,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: mainButtonColor,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 15.0,
+                                          horizontal: 20.0,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            2.0,
+                                          ),
+                                        ),
+                                        elevation: 2.0,
+                                      ),
+                                      child: const Text(
+                                        'View Routes',
+                                        style: TextStyle(
+                                          fontSize: 16.0,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  if (isMapVisible) ...[
+                                    const SizedBox(height: 16),
+                                    Container(
+                                      height: 300,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: Colors.grey.shade300,
+                                        ),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(16),
+                                        child: SizedBox(
+                                          width: double.infinity,
+                                          height: 300,
+                                          child: Stack(
+                                            children: [
+                                              GoogleMap(
+                                                initialCameraPosition:
+                                                    initialCameraPosition,
+                                                markers: markers,
+                                                polylines: Set<Polyline>.of(
+                                                  polylines.values,
+                                                ),
+                                                onMapCreated: (controller) {
+                                                  mapController = controller;
+                                                  updateMapTheme(controller);
+                                                },
+                                                zoomControlsEnabled: true,
+                                                mapToolbarEnabled: false,
+                                                myLocationButtonEnabled: false,
                                               ),
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              color:
-                                                  index == selectedRouteIndex
-                                                      ? Colors.blue.withOpacity(
-                                                        0.1,
-                                                      )
-                                                      : Colors.grey.shade50,
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Text(
-                                                  'Route ${index + 1}',
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
+                                              if (isLoading)
+                                                SizedBox(
+                                                  width: double.infinity,
+                                                  height: 300,
+                                                  child: Container(
+                                                    color: Colors.black
+                                                        .withOpacity(0.5),
+                                                    child: const Center(
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                            color: Colors.white,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    if (routeOptions.isNotEmpty) ...[
+                                      const SizedBox(height: 16),
+                                      const Text(
+                                        'Select Route:',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      SizedBox(
+                                        height: 120,
+                                        child: ListView.builder(
+                                          scrollDirection: Axis.horizontal,
+                                          itemCount: routeOptions.length,
+                                          itemBuilder: (context, index) {
+                                            return GestureDetector(
+                                              onTap: () => _selectRoute(index),
+                                              child: Container(
+                                                width: 160,
+                                                margin: const EdgeInsets.only(
+                                                  right: 10,
+                                                ),
+                                                padding: const EdgeInsets.all(
+                                                  10,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  border: Border.all(
                                                     color:
                                                         index ==
                                                                 selectedRouteIndex
                                                             ? Colors.blue
-                                                            : Colors.black87,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 5),
-                                                Text(
-                                                  'Duration: ${routeDurations[index]}',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color:
+                                                            : Colors
+                                                                .grey
+                                                                .shade300,
+                                                    width:
                                                         index ==
                                                                 selectedRouteIndex
-                                                            ? Colors
-                                                                .blue
-                                                                .shade800
-                                                            : Colors.black54,
+                                                            ? 2
+                                                            : 1,
                                                   ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  color:
+                                                      index ==
+                                                              selectedRouteIndex
+                                                          ? Colors.blue
+                                                              .withOpacity(0.1)
+                                                          : Colors.grey.shade50,
                                                 ),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  'Distance: ${routeDistances[index]}',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color:
-                                                        index ==
-                                                                selectedRouteIndex
-                                                            ? Colors
-                                                                .blue
-                                                                .shade800
-                                                            : Colors.black54,
-                                                  ),
-                                                ),
-                                                if (index ==
-                                                    selectedRouteIndex) ...[
-                                                  const SizedBox(height: 5),
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 8,
-                                                          vertical: 3,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.blue,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            10,
-                                                          ),
-                                                    ),
-                                                    child: const Text(
-                                                      'Selected',
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    Text(
+                                                      'Route ${index + 1}',
                                                       style: TextStyle(
-                                                        fontSize: 10,
-                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color:
+                                                            index ==
+                                                                    selectedRouteIndex
+                                                                ? Colors.blue
+                                                                : Colors
+                                                                    .black87,
                                                       ),
                                                     ),
-                                                  ),
-                                                ],
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ],
-
-                              const SizedBox(height: 24),
-
-                              // Date
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.calendar_today,
-                                    color: Color(0x9C002B5B),
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: CustomInputField(
-                                      controller: dateController,
-                                      label: 'Date',
-                                      hintText: 'DD/MM/YYYY',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Start Time
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.access_time,
-                                    color: Color(0x9C002B5B),
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: CustomDropdownField(
-                                      label: 'Arriving Time/Start Time',
-                                      hintText: '08:00:00',
-                                      options: generateTimes(),
-                                      value: selectedTime,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          selectedTime = value;
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Return Time
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.access_time,
-                                    color: Color(0x9C002B5B),
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: CustomDropdownField(
-                                      label: 'Trip Start Time',
-                                      hintText: '07:00:00',
-                                      options: generateTimes(),
-                                      value: selectedReturnTime,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          selectedReturnTime = value;
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Vehicle Registration Number
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.directions_car,
-                                    color: Color(0x9C002B5B),
-                                    size: 50,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: TextFormField(
-                                      controller: vehicleRegController,
-                                      enabled: isVehicleRegEditable,
-                                      decoration: const InputDecoration(
-                                        labelText: 'CBL 5680',
-                                        hintText: 'Vehicle Reg. No.',
-                                        border: InputBorder.none,
-                                        filled: true,
-                                        fillColor: Color(0xFFF2F2F2),
-                                        contentPadding: EdgeInsets.symmetric(
-                                          horizontal: 20,
-                                          vertical: 8,
+                                                    const SizedBox(height: 5),
+                                                    Text(
+                                                      'Duration: ${routeDurations[index]}',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color:
+                                                            index ==
+                                                                    selectedRouteIndex
+                                                                ? Colors
+                                                                    .blue
+                                                                    .shade800
+                                                                : Colors
+                                                                    .black54,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      'Distance: ${routeDistances[index]}',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color:
+                                                            index ==
+                                                                    selectedRouteIndex
+                                                                ? Colors
+                                                                    .blue
+                                                                    .shade800
+                                                                : Colors
+                                                                    .black54,
+                                                      ),
+                                                    ),
+                                                    if (index ==
+                                                        selectedRouteIndex) ...[
+                                                      const SizedBox(height: 5),
+                                                      Container(
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 8,
+                                                              vertical: 3,
+                                                            ),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.blue,
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                10,
+                                                              ),
+                                                        ),
+                                                        child: const Text(
+                                                          'Selected',
+                                                          style: TextStyle(
+                                                            fontSize: 10,
+                                                            color: Colors.white,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ),
+                                            );
+                                          },
                                         ),
                                       ),
-                                      style: const TextStyle(
-                                        color: Colors.black,
+                                    ],
+                                  ],
+                                  const SizedBox(height: 24),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.calendar_today,
+                                        color: Color(0x9C002B5B),
+                                        size: 20,
                                       ),
-                                      textAlign: TextAlign.center,
-                                    ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () async {
+                                            DateTime?
+                                            pickedDate = await showDatePicker(
+                                              context: context,
+                                              initialDate: DateTime.now(),
+                                              firstDate:
+                                                  DateTime.now(), // Restrict to today and future
+                                              lastDate: DateTime(2100),
+                                              
+                                            );
+
+                                            if (pickedDate != null) {
+                                              String formattedDate =
+                                                  "${pickedDate.day.toString().padLeft(2, '0')}/"
+                                                  "${pickedDate.month.toString().padLeft(2, '0')}/"
+                                                  "${pickedDate.year}";
+                                              dateController.text =
+                                                  formattedDate;
+                                            }
+                                          },
+                                          child: AbsorbPointer(
+                                            child: CustomInputField(
+                                              controller: dateController,
+                                              label: 'Date',
+                                              hintText: 'DD/MM/YYYY',
+                                              validator: (value) {
+                                                if (value == null ||
+                                                    value.isEmpty) {
+                                                  return 'Please select a date';
+                                                }
+                                                return null;
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.edit,
-                                      color: Color(0xFF0A0E2A),
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        isVehicleRegEditable = true;
-                                      });
-                                    },
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.access_time,
+                                        color: Color(0x9C002B5B),
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: CustomDropdownField(
+                                          label:
+                                              isWSO2Start
+                                                  ? 'Start Time'
+                                                  : 'Arriving Time',
+                                          hintText:
+                                              isWSO2Start
+                                                  ? '17:00:00'
+                                                  : '08:00:00',
+                                          options: _getTimeOptions(),
+                                          value: selectedTime,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              selectedTime = value;
+                                            });
+                                          },
+                                          validator: (value) {
+                                            if (value == null ||
+                                                value.isEmpty) {
+                                              return 'Please select a time';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 20),
+                                  CustomButton(
+                                    text: 'Post Ride',
+                                    onPressed: _postRide,
+                                    height: 60,
                                   ),
                                 ],
                               ),
-
-                              const SizedBox(height: 24),
-
-                              // Post Ride Button
-                              CustomButton(
-                                text: 'Post Ride',
-                                onPressed: _postRide,
-                                // () {
-                                // if (_formKey.currentState?.validate() ??
-                                //     false) {
-                                //   // Get the selected route data
-                                //   String routeInfo = '';
-                                //   if (selectedRouteIndex <
-                                //       routeDurations.length) {
-                                //     routeInfo =
-                                //         'Route ${selectedRouteIndex + 1}: ${routeOptions[selectedRouteIndex]}, ${routeDistances[selectedRouteIndex]}';
-                                //   }
-
-                                //   print('Posting ride...');
-                                //   print('Pick-Up: ${pickUpController.text}');
-                                //   print(
-                                //     'Drop-Off: ${dropOffController.text}',
-                                //   );
-                                //   print('Date: ${dateController.text}');
-                                //   print('Time selected: $selectedTime');
-                                //   print('Return Time: $selectedReturnTime');
-                                //   print(
-                                //     'Vehicle Reg: ${vehicleRegController.text}',
-                                //   );
-                                //   print('Selected Route: $routeInfo');
-                                // } else {
-                                //   print(
-                                //     'Please fill in all required fields.',
-                                //   );
-                                // }
-                                // },
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_isPosting)
+            Center(
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 4.0,
                   ),
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+        ],
       ),
     );
   }

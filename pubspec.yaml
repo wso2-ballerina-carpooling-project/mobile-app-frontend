@@ -47,6 +47,9 @@ dependencies:
   jwt_decode: ^0.3.1
   jwt_decoder: ^2.0.1
   flutter_secure_storage: ^9.2.2
+  intl: ^0.20.2
+  firebase_messaging: ^15.2.9
+  shimmer: ^3.0.0
   
 dependency_overrides:
   flutter_keyboard_visibility:

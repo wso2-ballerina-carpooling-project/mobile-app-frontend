@@ -74,7 +74,7 @@ class _CustomButtonState extends State<CustomButton> with SingleTickerProviderSt
                     )
                   : null,
               color: isDisabled ? widget.backgroundColor.withOpacity(0.5) : widget.backgroundColor,
-              borderRadius: BorderRadius.circular(50),
+              borderRadius: BorderRadius.circular(5),
               boxShadow: [
                 BoxShadow(
                   color: Colors.grey.withOpacity(_isPressed ? 0.4 : 0.2),
@@ -92,7 +92,7 @@ class _CustomButtonState extends State<CustomButton> with SingleTickerProviderSt
                 shadowColor: Colors.transparent,
                 padding: widget.padding,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(50),
+                  borderRadius: BorderRadius.circular(5),
                 ),
                 disabledBackgroundColor: Colors.transparent,
                 disabledForegroundColor: widget.textColor.withOpacity(0.5),
