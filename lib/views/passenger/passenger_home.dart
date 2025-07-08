@@ -42,12 +42,15 @@ class _PassengerHomeState extends State<PassengerHome> {
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1736),
+      backgroundColor: primaryColor,
       body: SafeArea(
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 30),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+                vertical: 30,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -74,7 +77,11 @@ class _PassengerHomeState extends State<PassengerHome> {
                       shape: BoxShape.circle,
                     ),
                     padding: const EdgeInsets.all(8),
-                    child: const Icon(Icons.notifications, color: Color(0xFF0F1736), size: 24),
+                    child: const Icon(
+                      Icons.notifications,
+                      color: Color(0xFF0F1736),
+                      size: 24,
+                    ),
                   ),
                 ],
               ),
@@ -82,19 +89,18 @@ class _PassengerHomeState extends State<PassengerHome> {
             // Search bar
             GestureDetector(
               onTap: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (BuildContext context) {
-                    return FindARideScreen();
-                  },
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => FindARideScreen()),
                 );
               },
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(30),
@@ -124,7 +130,7 @@ class _PassengerHomeState extends State<PassengerHome> {
                 ),
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.only(topLeft: Radius.circular(40)),
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(20)),
                 ),
                 child: SingleChildScrollView(
                   child: Column(
@@ -196,9 +202,10 @@ class _PassengerHomeState extends State<PassengerHome> {
                       const SizedBox(height: 8),
                       // Last trips list
                       Column(
-                        children: lastTrips
-                            .map((trip) => LastTripItem(trip: trip))
-                            .toList(),
+                        children:
+                            lastTrips
+                                .map((trip) => LastTripItem(trip: trip))
+                                .toList(),
                       ),
                     ],
                   ),
