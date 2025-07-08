@@ -93,9 +93,9 @@ class _RideCardState extends State<RideCard> {
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 2.0),
-      color: const Color(0xFFf1f3f4),
+      color: Colors.white,
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

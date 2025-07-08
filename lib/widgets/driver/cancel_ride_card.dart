@@ -11,14 +11,14 @@ class SimpleCancelRideCard extends StatelessWidget {
     final startLocation = ride.pickupLocation;
     final endLocation = ride.dropoffLocation;
     final cancelReason = ride.reason ?? 'No reason provided'; // Assuming cancelReason is nullable
-    final startTime = ride.startTime?.toString() ?? 'N/A';
-    final date = ride.date?.toString() ?? 'N/A';
+    final startTime = ride.startTime;
+    final date = ride.date;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 2.0),
       decoration: BoxDecoration(
-        color: const Color(0xFFf1f3f4),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
         border: Border(
           bottom: BorderSide(
             color: Colors.grey[400]!, // Gray color for bottom border

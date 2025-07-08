@@ -147,7 +147,7 @@ class _ActivitiesScreenState extends State<ActivitiesScreen>
               child: Container(
                 margin: const EdgeInsets.only(top: 10),
                 decoration: const BoxDecoration(
-                  color: Colors.white,
+                  color: Color(0xFFF8F9FA),
                   borderRadius: BorderRadius.only(topLeft: Radius.circular(20)),
                 ),
                 child: _isLoading
