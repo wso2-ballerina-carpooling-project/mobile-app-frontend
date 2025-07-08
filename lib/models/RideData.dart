@@ -14,6 +14,7 @@ class Ride {
   final int seat;
   final int passengerCount;
   final String id;
+  final String? reason;
   final List<Passenger> passengers; // Added for waypoints
   final Route route; // Added for polyline
 
@@ -32,6 +33,7 @@ class Ride {
     required this.passengerCount,
     required this.id,
     required this.passengers,
+    required this.reason,
     required this.route,
   });
 
@@ -42,6 +44,7 @@ class Ride {
       pickupLocation: json['startLocation'] as String,
       dropoffLocation: json['endLocation'] as String,
       date: json['date'] as String,
+      reason: json['reason'] as String?,
       startTime: json['time'] as String,
       duration: json['route']['duration'] as String,
       distance: json['route']['distance'] as String,

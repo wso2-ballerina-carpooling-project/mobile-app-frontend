@@ -4,6 +4,7 @@ import 'package:jwt_decode/jwt_decode.dart';
 import 'package:mobile_frontend/config/constant.dart';
 import 'package:mobile_frontend/models/RideData.dart';
 import 'package:mobile_frontend/services/ride_services.dart';
+import 'package:mobile_frontend/widgets/driver/cancel_ride_card.dart';
 import 'package:mobile_frontend/widgets/driver/ride_card.dart';
 import 'package:mobile_frontend/widgets/passenger/passenger_card.dart';
 import 'package:mobile_frontend/widgets/simple_ride_card.dart';
@@ -42,35 +43,78 @@ class _ActivitiesScreenState extends State<ActivitiesScreen>
     try {
       String? token = await _storage.read(key: 'jwt_token');
       if (token == null) {
-        setState(() {
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
         return;
       }
 
       Map<String, dynamic> payload = Jwt.parseJwt(token);
-      setState(() {
-        _userRole = payload['role']?.toString();
-      });
-
-      if (_userRole == 'driver') {
-        _ongoingRides = await RideService.fetchDriverOngoing(_storage);
-        _completedRides = await RideService.fetchDriverCompleted(_storage);
-        _canceledRides = await RideService.fetchDriverCanceled(_storage);
-      } else if (_userRole == 'passenger') {
-        _ongoingRides = await RideService.fetchPassengerOngoing(_storage);
-        _completedRides = await RideService.fetchPassengerCompleted(_storage);
-        _canceledRides = await RideService.fetchPassengerCanceled(_storage);
+      if (mounted) {
+        setState(() {
+          _userRole = payload['role']?.toString();
+        });
       }
 
-      setState(() {
-        _isLoading = false;
-      });
+      // Fetch Ongoing rides first
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+        });
+      }
+      if (_userRole == 'driver') {
+        _ongoingRides = await RideService.fetchDriverOngoing(_storage);
+      } else if (_userRole == 'passenger') {
+        _ongoingRides = await RideService.fetchPassengerOngoing(_storage);
+      }
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+
+      // Fetch Completed rides second
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+        });
+      }
+      if (_userRole == 'driver') {
+        _completedRides = await RideService.fetchDriverCompleted(_storage);
+      } else if (_userRole == 'passenger') {
+        _completedRides = await RideService.fetchPassengerCompleted(_storage);
+      }
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+
+      // Fetch Canceled rides last
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+        });
+      }
+      if (_userRole == 'driver') {
+        _canceledRides = await RideService.fetchDriverCanceled(_storage);
+      } else if (_userRole == 'passenger') {
+        _canceledRides = await RideService.fetchPassengerCanceled(_storage);
+      }
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       print('Error fetching user role or rides: $e');
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -111,9 +155,9 @@ class _ActivitiesScreenState extends State<ActivitiesScreen>
                     : TabBarView(
                         controller: _tabController,
                         children: [
-                          _buildTabContent('Ongoing', _ongoingRides),
+                          _buildOngoingContent('Ongoing', _ongoingRides),
                           _buildTabContent('Completed', _completedRides),
-                          _buildTabContent('Canceled', _canceledRides),
+                          _buildCancelContent('Canceled', _canceledRides),
                         ],
                       ),
               ),
@@ -156,6 +200,53 @@ class _ActivitiesScreenState extends State<ActivitiesScreen>
                       ? (index == 0
                           ? RideCard(ride: rides[index])
                           : SimpleRideCard(ride: rides[index]))
+                      : PassengerRideCard(ride: rides[index]),
+                );
+              },
+            )
+          : Center(
+              child: Text(
+                'No $tabName activities',
+                style: TextStyle(color: Colors.grey[700], fontSize: 16),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildOngoingContent(String tabName, List<Ride> rides) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: rides.isNotEmpty
+          ? ListView.builder(
+              itemCount: rides.length,
+              itemBuilder: (context, index) {
+                return SizedBox(
+                  width: MediaQuery.of(context).size.width,
+                  child: _userRole == 'driver'
+                      ? SimpleRideCard(ride: rides[index])
+                      : PassengerRideCard(ride: rides[index]),
+                );
+              },
+            )
+          : Center(
+              child: Text(
+                'No $tabName activities',
+                style: TextStyle(color: Colors.grey[700], fontSize: 16),
+              ),
+            ),
+    );
+  }
+  Widget _buildCancelContent(String tabName, List<Ride> rides) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: rides.isNotEmpty
+          ? ListView.builder(
+              itemCount: rides.length,
+              itemBuilder: (context, index) {
+                return SizedBox(
+                  width: MediaQuery.of(context).size.width,
+                  child: _userRole == 'driver'
+                      ? SimpleCancelRideCard(ride: rides[index])
                       : PassengerRideCard(ride: rides[index]),
                 );
               },

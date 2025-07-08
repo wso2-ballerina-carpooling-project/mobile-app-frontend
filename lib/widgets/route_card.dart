@@ -1,57 +1,41 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+
 
 class RouteCard extends StatelessWidget {
   final String startTime;
+  final String Date;
   final String duration;
   final String startLocation;
   final String endLocation;
   final String peopleJoined; // e.g., "3/4"
+  final String rideId;
   final String price;
   final Function()? onStartPressed;
 
   const RouteCard({
     super.key,
     required this.startTime,
+    required this.Date,
     required this.duration,
     required this.startLocation,
     required this.endLocation,
     required this.peopleJoined,
+    required this.rideId,
     required this.price,
     this.onStartPressed,
   });
 
   // Helper method to calculate estimated start time (startTime - duration - 5 minutes)
-  String _calculateEstimatedStartTime() {
-    try {
-      final DateFormat timeFormat = DateFormat('hh:mm a');
-      final DateTime startDateTime = timeFormat.parse(startTime);
-
-      final RegExp durationRegex = RegExp(r'(\d+)h\s*(\d*)m?');
-      final match = durationRegex.firstMatch(duration);
-      int hours = 0;
-      int minutes = 0;
-
-      if (match != null) {
-        hours = int.parse(match.group(1)!);
-        minutes = match.group(2)!.isNotEmpty ? int.parse(match.group(2)!) : 0;
-      }
-
-      final totalMinutes = (hours * 60 + minutes + 5);
-      final estimatedTime = startDateTime.subtract(Duration(minutes: totalMinutes));
-
-      return timeFormat.format(estimatedTime);
-    } catch (e) {
-      return 'N/A';
-    }
-  }
+ 
 
   @override
   Widget build(BuildContext context) {
     const cardColor = Color(0xFFf1f3f4); // Blue from the image
     const textColor = Colors.black;
-    const buttonColor = Color(0xFF1976d2 ); // Greenish button color
-    const infoBgColor = Color(0xFFe5e7eb ); // Semi-transparent white for background
+    const buttonColor = Color(0xFF1976d2); // Greenish button color
+    const infoBgColor = Color(
+      0xFFe5e7eb,
+    ); // Semi-transparent white for background
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -81,17 +65,18 @@ class RouteCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Est. ${_calculateEstimatedStartTime()}',
-            style: const TextStyle(
-              fontSize: 14,
-              color: textColor,
-            ),
+            '${Date}',
+            style: const TextStyle(fontSize: 14, color: textColor),
           ),
           const SizedBox(height: 12),
           // Body: Locations
           Row(
             children: [
-              const Icon(Icons.location_on_outlined, color: textColor, size: 20),
+              const Icon(
+                Icons.location_on_outlined,
+                color: textColor,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -109,10 +94,7 @@ class RouteCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       endLocation,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: textColor,
-                      ),
+                      style: const TextStyle(fontSize: 14, color: textColor),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -127,40 +109,39 @@ class RouteCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: infoBgColor,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       '$peopleJoined joined',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: textColor,
-                      ),
+                      style: const TextStyle(fontSize: 14, color: textColor),
                     ),
                   ),
                   const SizedBox(width: 8),
                   // Price
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: infoBgColor,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       price,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: textColor,
-                      ),
+                      style: const TextStyle(fontSize: 14, color: textColor),
                     ),
                   ),
                 ],
               ),
-              
+
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: buttonColor,
@@ -168,10 +149,20 @@ class RouteCard extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   minimumSize: const Size(80, 30),
                 ),
-                onPressed: onStartPressed,
+                onPressed: () {
+                  // Navigate to RideStartScreen with rideId
+                  Navigator.pushNamed(
+  context,
+  '/rideStart',
+  arguments: '01f05bb9-8365-10b6-b0b2-b1b3d3dc2b54', // Replace with actual rideId
+);
+                },
                 child: const Text(
                   'Start',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),

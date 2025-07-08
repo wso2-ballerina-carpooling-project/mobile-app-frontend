@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_frontend/config/constant.dart';
 import 'package:mobile_frontend/models/RideData.dart';
@@ -8,6 +9,7 @@ import 'package:mobile_frontend/widgets/last_trip_item.dart';
 import 'package:mobile_frontend/models/last_trip.dart';
 import 'package:mobile_frontend/widgets/route_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shimmer/shimmer.dart';
 
 class DriverHomeScreen extends StatefulWidget {
   const DriverHomeScreen({super.key});
@@ -56,13 +58,9 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       print('Filtered rides: $filteredRides');
       setState(() {
         rides = filteredRides;
-        isLoading = false;
       });
     } catch (e) {
       print('Error fetching rides: $e');
-      setState(() {
-        isLoading = false;
-      });
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error fetching rides: $e')));
@@ -70,22 +68,31 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   }
 
   Future<void> fetchLastTrips() async {
-    setState(() {
-      lastTrips = [
-        LastTrip(
-          locationName: 'Lakewood Residence',
-          address: '165/A8 Main Street, 11, Colombo',
-        ),
-        LastTrip(
-          locationName: 'Marino Mall',
-          address: 'No. 590, Galle Road, Colombo 03',
-        ),
-        LastTrip(
-          locationName: 'Lakewood Residence',
-          address: '165/A8 Main Street, 11, Colombo',
-        ),
-      ];
-    });
+    try {
+      final storage = FlutterSecureStorage();
+      final List<Ride> completedRides = await RideService.fetchDriverCompleted(
+        storage,
+      );
+
+      setState(() {
+        lastTrips =
+            completedRides
+                .map(
+                  (ride) => LastTrip(
+                    locationName:
+                        ride.pickupLocation, 
+                    address:
+                        ride.dropoffLocation, 
+                  ),
+                )
+                .toList();
+      });
+    } catch (e) {
+      print('Error fetching last trips: $e');
+      setState(() {
+        lastTrips = []; 
+      });
+    }
   }
 
   Future<void> refreshData() async {
@@ -96,6 +103,32 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     setState(() {
       isLoading = false;
     });
+  }
+
+  Widget _buildLastTripPlaceholder() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Column(
+        children: [
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(vertical: 5),
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+              ),
+            ),
+            title: Container(width: 150, height: 16, color: Colors.white),
+            subtitle: Container(width: 200, height: 14, color: Colors.white),
+            trailing: Container(width: 60, height: 16, color: Colors.white),
+          ),
+          Divider(color: Colors.grey.shade300, thickness: 1.0, height: 1.0),
+        ],
+      ),
+    );
   }
 
   @override
@@ -182,7 +215,68 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                         ),
                         SizedBox(height: 15),
                         isLoading
-                            ? Center(child: CircularProgressIndicator())
+                            ? SizedBox(
+                              height: 210,
+                              child: ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: 3, // Show 3 placeholder cards
+                                itemBuilder: (context, index) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(
+                                      right: 15.0,
+                                      left: 0,
+                                    ),
+                                    child: SizedBox(
+                                      width: screenWidth * 0.95,
+                                      child: Shimmer.fromColors(
+                                        baseColor: Colors.grey[300]!,
+                                        highlightColor: Colors.grey[100]!,
+                                        child: Card(
+                                          elevation: 4,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          child: Container(
+                                            padding: EdgeInsets.all(16),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Container(
+                                                  width: double.infinity,
+                                                  height: 20,
+                                                  color: Colors.white,
+                                                ),
+                                                SizedBox(height: 10),
+                                                Container(
+                                                  width: 150,
+                                                  height: 16,
+                                                  color: Colors.white,
+                                                ),
+                                                SizedBox(height: 10),
+                                                Container(
+                                                  width: 100,
+                                                  height: 16,
+                                                  color: Colors.white,
+                                                ),
+                                                Spacer(),
+                                                Container(
+                                                  width: 80,
+                                                  height: 36,
+                                                  color: Colors.white,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            )
                             : rides.isEmpty
                             ? Center(child: Text('No active rides found'))
                             : SizedBox(
@@ -200,6 +294,8 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                                     child: SizedBox(
                                       width: screenWidth * 0.95,
                                       child: RouteCard(
+                                        rideId: ride.id,
+                                        Date: ride.date,
                                         startTime: ride.startTime,
                                         duration: ride.duration,
                                         startLocation: ride.pickupLocation,
@@ -231,12 +327,21 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                           thickness: 1.0,
                           height: 1.0,
                         ),
-                        Column(
-                          children:
-                              lastTrips
-                                  .map((trip) => LastTripItem(trip: trip))
-                                  .toList(),
-                        ),
+                        isLoading
+                            ? Column(
+                              children: List.generate(
+                                3, // Show 3 placeholder last trip items
+                                (index) => _buildLastTripPlaceholder(),
+                              ),
+                            )
+                            : lastTrips.isEmpty
+                            ? Center(child: Text('No last rides found'))
+                            : Column(
+                              children:
+                                  lastTrips
+                                      .map((trip) => LastTripItem(trip: trip))
+                                      .toList(),
+                            ),
                       ],
                     ),
                   ),

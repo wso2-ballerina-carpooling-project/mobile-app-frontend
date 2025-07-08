@@ -20,7 +20,9 @@ final Map<String, WidgetBuilder> routes = {
   '/role': (context) => RoleSelectionScreen(userData: ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>,),
   '/driver-details': (context) => DriverDetailsScreen(userData: ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>,),
   '/waiting': (context) => AwaitingVerificationScreen(),
-  '/rideStart': (context) => RideStartScreen(),
+'/rideStart': (context) => RideStartScreen(
+              rideId: ModalRoute.of(context)!.settings.arguments as String,
+            ),
   '/phoneEdit': (context) => PhoneUpdate(),
   '/nameEdit' : (context) => NameUpdateScreen(),
   '/vehicleEdit' : (context) => VehicleUpdate(),

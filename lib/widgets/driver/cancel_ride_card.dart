@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/models/RideData.dart';
 
-class SimpleRideCard extends StatelessWidget {
+class SimpleCancelRideCard extends StatelessWidget {
   final Ride ride;
 
-  const SimpleRideCard({super.key, required this.ride});
+  const SimpleCancelRideCard({super.key, required this.ride});
 
   @override
   Widget build(BuildContext context) {
     final startLocation = ride.pickupLocation;
     final endLocation = ride.dropoffLocation;
-    final passengerCount = ride.passengerCount;
-    final startTime = ride.startTime;
-    final date = ride.date;
+    final cancelReason = ride.reason ?? 'No reason provided'; // Assuming cancelReason is nullable
+    final startTime = ride.startTime?.toString() ?? 'N/A';
+    final date = ride.date?.toString() ?? 'N/A';
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 2.0),
@@ -45,18 +45,9 @@ class SimpleRideCard extends StatelessWidget {
               style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Earn: Rs. 500', // Placeholder earnings
-                  style: TextStyle(fontSize: 16, color: Colors.green[700]),
-                ),
-                Text(
-                  'Passengers: $passengerCount',
-                  style: const TextStyle(fontSize: 16, color: Colors.black87),
-                ),
-              ],
+            Text(
+              'Reason: $cancelReason',
+              style: TextStyle(fontSize: 14, color: Colors.red[700]), // Highlight cancellation reason
             ),
             const SizedBox(height: 8),
             Row(

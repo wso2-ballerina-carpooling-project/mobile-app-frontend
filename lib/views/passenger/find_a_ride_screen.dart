@@ -316,6 +316,7 @@ class _FindARideScreen extends State<FindARideScreen> {
           );
 
           if (waytowork) {
+            
                  Navigator.push(
                   context,
                   MaterialPageRoute(

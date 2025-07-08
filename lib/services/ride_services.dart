@@ -81,8 +81,8 @@ class RideService {
       String? token = await storage.read(key: 'jwt_token');
       if (token == null) return [];
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/completedDriverRide'),
+      final response = await http.post(
+        Uri.parse('$baseUrl/driverRideInfor'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -137,7 +137,7 @@ class RideService {
 
         return rideList
             .map((rideJson) => Ride.fromJson(rideJson, 0)) // Adjust seatingCapacity if needed
-            .where((ride) => ride.status == 'ongoing')
+            .where((ride) => ride.status == 'active')
             .toList();
       }
       return [];
@@ -153,7 +153,7 @@ class RideService {
       if (token == null) return [];
 
       final response = await http.get(
-        Uri.parse('$baseUrl/canceledDriverRide'),
+        Uri.parse('$baseUrl/cancelDriverRide'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -169,7 +169,7 @@ class RideService {
 
         return rideList
             .map((rideJson) => Ride.fromJson(rideJson, 0)) // Adjust seatingCapacity if needed
-            .where((ride) => ride.status == 'canceled')
+            .where((ride) => ride.status == 'cancel')
             .toList();
       }
       return [];
