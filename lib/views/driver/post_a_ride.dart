@@ -433,6 +433,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
   }
 
   Future<void> _postRide() async {
+    // Validate all required fields
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all required fields')),
@@ -440,68 +441,169 @@ class _RidePostScreenState extends State<RidePostScreen> {
       return;
     }
 
-    final bool? confirm = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false, 
-      barrierColor: Colors.black.withOpacity(0.6), // Dark overlay for focus
-      builder:
-          (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(
-                20,
-              ), 
-            ),
-            backgroundColor: Colors.white, 
-            elevation: 8, 
-            title: 
-                Text(
-                  'Confirm Ride Post',
+    // Additional checks for required fields
+    if (pickUpController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a starting point')),
+      );
+      return;
+    }
+    if (dropOffController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a destination')),
+      );
+      return;
+    }
+    if (dateController.text.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a date')));
+      return;
+    }
+    if (selectedTime == null || selectedTime!.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a time')));
+      return;
+    }
+    if (routeOptions.isEmpty || selectedRouteIndex >= routeOptions.length) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a valid route')),
+      );
+      return;
+    }
+
+    // Validate ride time (must be at least 12 hours in the future)
+    try {
+      final List<String> dateParts = dateController.text.split('/');
+      if (dateParts.length != 3) {
+        throw Exception('Invalid date format');
+      }
+      final int day = int.parse(dateParts[0]);
+      final int month = int.parse(dateParts[1]);
+      final int year = int.parse(dateParts[2]);
+      final List<String> timeParts = (selectedTime ?? '').split(':');
+      if (timeParts.length != 3) {
+        throw Exception('Invalid time format');
+      }
+      final int hour = int.parse(timeParts[0]);
+      final int minute = int.parse(timeParts[1]);
+      final int second = int.parse(timeParts[2]);
+
+      final DateTime rideDateTime = DateTime(
+        year,
+        month,
+        day,
+        hour,
+        minute,
+        second,
+      );
+      final DateTime now = DateTime.now();
+      final DateTime earliestAllowedTime = now.add(const Duration(hours: 12));
+
+      if (rideDateTime.isBefore(earliestAllowedTime)) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (context) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                backgroundColor: Colors.white,
+                elevation: 8,
+                title: const Text(
+                  'Invalid Ride Time',
                   style: TextStyle(
-                    color:
-                        Colors
-                            .black87, // White for dark theme (instead of black87)
+                    color: Colors.black87,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
+                ),
+                content: const Text(
+                  'Rides must be scheduled at least 12 hours in advance.',
+                  style: TextStyle(color: Colors.black87, fontSize: 16),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(
+                      'OK',
+                      style: TextStyle(
+                        color: linkColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      side: BorderSide(color: linkColor, width: 1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+        );
+        return;
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error parsing date or time: $e')));
+      return;
+    }
+
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.6),
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(5),
+            ),
+            backgroundColor: Colors.white,
+            elevation: 8,
+            title: const Text(
+              'Confirm Ride Post',
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             content: const Text(
               'Are you sure you want to post this ride?',
-              style: TextStyle(
-                color:
-                    Colors
-                        .black87, // Light white for readability on dark background
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.black87, fontSize: 16),
             ),
-           
             actionsPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 8,
-            ), // Match logout dialog
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
                 child: Text(
                   'Cancel',
                   style: TextStyle(
-                    color: linkColor, // Use linkColor from constant.dart
+                    color: linkColor,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 style: TextButton.styleFrom(
-                  side: BorderSide(
-                    color: linkColor,
-                    width: 1,
-                  ), // Match logout dialog's border
+                  side: BorderSide(color: linkColor, width: 1),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,
                     vertical: 10,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(
-                      10,
-                    ), // Match logout dialog
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
               ),
@@ -516,16 +618,13 @@ class _RidePostScreenState extends State<RidePostScreen> {
                   ),
                 ),
                 style: TextButton.styleFrom(
-                  backgroundColor:
-                      mainButtonColor, // Use mainButtonColor from constant.dart
+                  backgroundColor: mainButtonColor,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,
                     vertical: 10,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(
-                      10,
-                    ), // Match logout dialog
+                    borderRadius: BorderRadius.circular(5),
                   ),
                 ),
               ),
@@ -587,15 +686,42 @@ class _RidePostScreenState extends State<RidePostScreen> {
             barrierDismissible: false,
             builder:
                 (context) => AlertDialog(
-                  title: const Text('Success'),
-                  content: const Text('Ride posted successfully!'),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  backgroundColor: Colors.white,
+                  title: const Text(
+                    'Success',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                  content: const Text(
+                    'Ride posted successfully!',
+                    style: TextStyle(color: Colors.black87, fontSize: 16),
+                  ),
                   actions: [
                     TextButton(
+                      style: TextButton.styleFrom(
+                        backgroundColor: mainButtonColor,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                      ),
                       onPressed: () {
-                        Navigator.of(context).pop();
-                        Navigator.pop(context);
+                        Navigator.of(context).pop(); // Close AlertDialog
+                        Navigator.pop(context); // Navigate back
                       },
-                      child: const Text('Back'),
+                      child: const Text(
+                        'Back',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
                     ),
                   ],
                 ),
@@ -608,15 +734,42 @@ class _RidePostScreenState extends State<RidePostScreen> {
             barrierDismissible: false,
             builder:
                 (context) => AlertDialog(
-                  title: const Text('Failure'),
-                  content: Text(errorMessage),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  backgroundColor: Colors.white,
+                  title: const Text(
+                    'Failure',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                  content: Text(
+                    errorMessage,
+                    style: const TextStyle(color: Colors.black87, fontSize: 16),
+                  ),
                   actions: [
                     TextButton(
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
                       onPressed: () {
-                        Navigator.of(context).pop();
-                        _postRide();
+                        Navigator.of(context).pop(); // Close dialog
+                        _postRide(); // Retry logic
                       },
-                      child: const Text('Post Again'),
+                      child: const Text(
+                        'Post Again',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
                     ),
                   ],
                 ),
@@ -767,7 +920,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
                               ),
                               child: Column(
                                 children: [
-                                  // Pickup Location Input with TypeAhead
                                   Row(
                                     children: [
                                       const Icon(
@@ -916,7 +1068,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                     ],
                                   ),
                                   const SizedBox(height: 16),
-                                  // Drop-off Location Input with TypeAhead
                                   Row(
                                     children: [
                                       const Icon(
@@ -1059,7 +1210,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                                           Icons.lock,
                                                         ),
                                                       ),
-                                                  // readOnly: true,
                                                   validator: (value) {
                                                     if (value == null ||
                                                         value.isEmpty) {
@@ -1296,13 +1446,15 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                       Expanded(
                                         child: GestureDetector(
                                           onTap: () async {
-                                            DateTime? pickedDate =
-                                                await showDatePicker(
-                                                  context: context,
-                                                  initialDate: DateTime.now(),
-                                                  firstDate: DateTime(2000),
-                                                  lastDate: DateTime(2100),
-                                                );
+                                            DateTime?
+                                            pickedDate = await showDatePicker(
+                                              context: context,
+                                              initialDate: DateTime.now(),
+                                              firstDate:
+                                                  DateTime.now(), // Restrict to today and future
+                                              lastDate: DateTime(2100),
+                                              
+                                            );
 
                                             if (pickedDate != null) {
                                               String formattedDate =
@@ -1318,6 +1470,13 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                               controller: dateController,
                                               label: 'Date',
                                               hintText: 'DD/MM/YYYY',
+                                              validator: (value) {
+                                                if (value == null ||
+                                                    value.isEmpty) {
+                                                  return 'Please select a date';
+                                                }
+                                                return null;
+                                              },
                                             ),
                                           ),
                                         ),
@@ -1350,13 +1509,22 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                               selectedTime = value;
                                             });
                                           },
+                                          validator: (value) {
+                                            if (value == null ||
+                                                value.isEmpty) {
+                                              return 'Please select a time';
+                                            }
+                                            return null;
+                                          },
                                         ),
                                       ),
                                     ],
                                   ),
+                                  SizedBox(height: 20),
                                   CustomButton(
                                     text: 'Post Ride',
                                     onPressed: _postRide,
+                                    height: 60,
                                   ),
                                 ],
                               ),
@@ -1387,6 +1555,3 @@ class _RidePostScreenState extends State<RidePostScreen> {
     );
   }
 }
-
-
-//completed - need to connect google map api to backend

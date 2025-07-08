@@ -134,7 +134,7 @@ class _SelectLocationState extends State<SelectLocation> {
       List<Placemark> placemarks = await placemarkFromCoordinates(
         location.latitude,
         location.longitude,
-        localeIdentifier: 'en_US', // Specify locale for consistency
+        localeIdentifier: 'en_US', 
       );
       
       if (mounted && placemarks.isNotEmpty) {
@@ -328,7 +328,7 @@ class _SelectLocationState extends State<SelectLocation> {
                   child: const Icon(
                     Icons.location_pin, 
                     size: 48, 
-                    color: mainButtonColor,
+                    color: Colors.white,
                   ),
                 ),
               ],
