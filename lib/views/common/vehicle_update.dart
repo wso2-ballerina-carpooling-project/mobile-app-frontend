@@ -129,7 +129,7 @@ class _VehicleUpdateState extends State<VehicleUpdate> {
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 40),
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20),
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
@@ -156,7 +156,7 @@ class _VehicleUpdateState extends State<VehicleUpdate> {
                     width: double.infinity,
                     decoration: const BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.only(topLeft: Radius.circular(50)),
+                      borderRadius: BorderRadius.only(topLeft: Radius.circular(20)),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(24.0),
@@ -298,6 +298,7 @@ class _VehicleUpdateState extends State<VehicleUpdate> {
                             CustomButton(
                               text: 'Save',
                               backgroundColor: mainButtonColor,
+                              height: 60,
                               onPressed: _updateVehicle,
                             ),
                           ],

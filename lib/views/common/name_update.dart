@@ -124,7 +124,7 @@ class _NameUpdateScreenState extends State<NameUpdateScreen> {
               children: [
                 // Top Row with Back Arrow and Centered Title
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 40),
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20),
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
@@ -154,9 +154,10 @@ class _NameUpdateScreenState extends State<NameUpdateScreen> {
                   child: Container(
                     width: double.infinity,
                     decoration: const BoxDecoration(
-                      color: Colors.white,
+                      color: Color(0xFFF8F9FA)
+,
                       borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(50),
+                        topLeft: Radius.circular(20),
                       ),
                     ),
                     child: Padding(
@@ -177,7 +178,7 @@ class _NameUpdateScreenState extends State<NameUpdateScreen> {
                                 return null;
                               },
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 10),
                             CustomInputField(
                               controller: _lastNameController,
                               label: 'Last Name',
@@ -193,6 +194,7 @@ class _NameUpdateScreenState extends State<NameUpdateScreen> {
                             CustomButton(
                               text: 'Save',
                               backgroundColor: mainButtonColor,
+                              height: 60,
                               onPressed: _updateDriverName,
                             ),
                           ],

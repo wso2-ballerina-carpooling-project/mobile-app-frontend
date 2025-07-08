@@ -114,7 +114,7 @@ class _PhoneUpdateState extends State<PhoneUpdate> {
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16.0,
-                    vertical: 40,
+                    vertical: 20,
                   ),
                   child: Stack(
                     alignment: Alignment.center,
@@ -151,7 +151,7 @@ class _PhoneUpdateState extends State<PhoneUpdate> {
                     decoration: const BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(50),
+                        topLeft: Radius.circular(20),
                       ),
                     ),
                     child: Padding(
@@ -179,7 +179,8 @@ class _PhoneUpdateState extends State<PhoneUpdate> {
                             const Spacer(),
                             CustomButton(
                               text: 'Save',
-                              backgroundColor: btnColor,
+                              backgroundColor: mainButtonColor,
+                              height: 60,
                               onPressed: _updatePhone,
                             ),
                           ],
