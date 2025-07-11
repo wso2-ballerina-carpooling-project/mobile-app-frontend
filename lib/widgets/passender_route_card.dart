@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_frontend/config/constant.dart';
 import 'package:mobile_frontend/views/passenger/passenger_ride_tracking.dart';
 
 class RouteCardPassenger extends StatelessWidget {
@@ -28,175 +27,139 @@ class RouteCardPassenger extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const cardColor = Color(0xFFf1f3f4); // Matching RouteCard's background
+    const textColor = Colors.black; // Primary text color
+    const buttonColor = Color(0xFF1976d2); // Matching RouteCard's button color
+    const infoBgColor = Color(0xFFe5e7eb); // Background for info chips
+
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
             blurRadius: 8,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top section with Back button and Date
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Back to work/home button
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: companyColor,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: infoBgColor,
+                  borderRadius: BorderRadius.circular(4),
                 ),
-                onPressed: () => {},
                 child: Text(
                   isGoingToWork ? 'Back to work' : 'Back to home',
-                  style: const TextStyle(color: Colors.black, fontSize: 14),
+                  style: const TextStyle(fontSize: 14, color: textColor),
                 ),
               ),
-
-              // Date and time box
+              // Date and time chip
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(8),
+                  color: infoBgColor,
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 child: Column(
                   children: [
                     Text(
                       date,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black87,
-                      ),
+                      style: const TextStyle(fontSize: 14, color: textColor),
                     ),
                     Text(
                       time,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black87,
-                      ),
+                      style: const TextStyle(fontSize: 14, color: textColor),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-
-          const SizedBox(height: 16),
-
-          // Route timeline and Track button
+          const SizedBox(height: 12),
+          // Body: Locations
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // Timeline with locations
+              const Icon(
+                Icons.location_on_outlined,
+                color: textColor,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
               Expanded(
-                child: Row(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Left side with timeline
-                    Column(
-                      children: [
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: const BoxDecoration(
-                            color: primaryColor,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        Container(
-                          width: 2,
-                          height: 60,
-                          color: Colors.grey.shade300,
-                        ),
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: const BoxDecoration(
-                            color: companyColor,
-                            shape: BoxShape.rectangle,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(width: 16),
-
-                    // Locations
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            startLocation,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          Text(
-                            startAddress,
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 36),
-                          Text(
-                            endLocation,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          Text(
-                            endAddress,
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
+                    Text(
+                      startLocation,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: textColor,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
+                   
+                    const SizedBox(height: 8),
+                    Text(
+                      endLocation,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: textColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                   
                   ],
                 ),
               ),
-
-              // Track button
-                          // Inside RouteCardPassenger widget
-            ElevatedButton(
-              onPressed: isRideStarted ? () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (BuildContext context) {
-                    return PassengerRideTracking(); // Replace with your tracking widget
-                  },
-                );
-              } : null,
-              child: Text('Track Ride'),
-            )
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Footer: Track Button
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: buttonColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  minimumSize: const Size(80, 30),
+                ),
+                onPressed: isRideStarted
+                    ? () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (BuildContext context) {
+                            return const PassengerRideTracking();
+                          },
+                        );
+                        if (onTrackPressed != null) {
+                          onTrackPressed!();
+                        }
+                      }
+                    : null,
+                child: const Text(
+                  'Track Ride',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+              ),
             ],
           ),
         ],

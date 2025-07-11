@@ -302,7 +302,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                                         endLocation: ride.dropoffLocation,
                                         peopleJoined:
                                             '${ride.passengerCount}/${ride.seatingCapacity}',
-                                        price: '\$45.00',
+                                        passengers: ride.passengers,
                                         onStartPressed: () {
                                           print('Start pressed ${ride.id}');
                                         },

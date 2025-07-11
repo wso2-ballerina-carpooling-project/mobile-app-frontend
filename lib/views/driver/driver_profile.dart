@@ -249,7 +249,7 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
                               lastName = result['lastName'] ?? lastName;
                               userName = '$firstName $lastName';
                             });
-                            await _loadUserData(); // Reload data to sync with new token
+                            await _loadUserData();
                           }
                         },
                         child: ListTile(

@@ -50,6 +50,7 @@ dependencies:
   intl: ^0.20.2
   firebase_messaging: ^15.2.9
   shimmer: ^3.0.0
+  url_launcher: ^6.3.2
   
 dependency_overrides:
   flutter_keyboard_visibility:
@@ -92,6 +93,7 @@ flutter:
     - assets/logo.png
     - assets/company.png
     - assets/car.png
+    - assets/car-icon.png
     - assets/anima.webp
     - themes/
 

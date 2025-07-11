@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'package:mobile_frontend/models/RideData.dart';
 
 class RouteCard extends StatelessWidget {
   final String startTime;
@@ -7,9 +7,9 @@ class RouteCard extends StatelessWidget {
   final String duration;
   final String startLocation;
   final String endLocation;
-  final String peopleJoined; // e.g., "3/4"
+  final String peopleJoined;
   final String rideId;
-  final String price;
+  final List<Passenger> passengers;
   final Function()? onStartPressed;
 
   const RouteCard({
@@ -21,12 +21,21 @@ class RouteCard extends StatelessWidget {
     required this.endLocation,
     required this.peopleJoined,
     required this.rideId,
-    required this.price,
+    required this.passengers,
     this.onStartPressed,
   });
 
-  // Helper method to calculate estimated start time (startTime - duration - 5 minutes)
- 
+  String _calculateTotalCost() {
+      if (passengers.isEmpty) {
+        return 'LKR 0';
+      }
+      final totalCost = passengers.fold<double>(
+        0,
+        (sum, passenger) => sum + passenger.cost,
+      );
+      return 'LKR ${totalCost.toInt()}';
+    }
+
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +144,7 @@ class RouteCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      price,
+                       _calculateTotalCost(),
                       style: const TextStyle(fontSize: 14, color: textColor),
                     ),
                   ),
@@ -158,10 +167,11 @@ class RouteCard extends StatelessWidget {
                 onPressed: () {
                   // Navigate to RideStartScreen with rideId
                   Navigator.pushNamed(
-  context,
-  '/rideStart',
-  arguments: '01f05bb9-8365-10b6-b0b2-b1b3d3dc2b54', // Replace with actual rideId
-);
+                    context,
+                    '/rideStart',
+                    arguments:
+                        '01f058d9-3fcc-1818-b755-49cf5bdba5f3', // Replace with actual rideId
+                  );
                 },
                 child: const Text(
                   'Start',

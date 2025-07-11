@@ -155,10 +155,10 @@ class _PassengerHomeState extends State<PassengerHome> {
                           children: [
                             // First route card - Going to work
                             SizedBox(
-                              width: MediaQuery.of(context).size.width * 0.85,
+                              width: MediaQuery.of(context).size.width * 0.95,
                               child: RouteCardPassenger(
-                                startLocation: 'Moratuwa',
-                                startAddress: 'Bandaranayake Road',
+                                startLocation: 'University of Moratuwa',
+                                startAddress: 'WSO2, Bandaranayake Mawatha, Colombo 03',
                                 endLocation: 'WSO2',
                                 endAddress: 'Bandaranayake Road',
                                 date: '04/05/2025',
