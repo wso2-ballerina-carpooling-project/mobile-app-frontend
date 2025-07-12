@@ -67,6 +67,7 @@ class Ride {
 class Passenger {
   final String passengerId;
   final LatLng waypoint;
+  final String address;
   final DateTime bookingTime;
   final String status;
   final double cost;
@@ -74,6 +75,7 @@ class Passenger {
   Passenger({
     required this.passengerId,
     required this.waypoint,
+    required this.address,
     required this.bookingTime,
     required this.status,
     required this.cost,
@@ -83,6 +85,7 @@ class Passenger {
     final waypointJson = json['waypointLN'] as Map<String, dynamic>;
     return Passenger(
       passengerId: json['passengerId'] as String,
+      address: json['waypoint'] as String,
       waypoint: LatLng(
         double.parse(waypointJson['latitude'] as String),
         double.parse(waypointJson['longitude'] as String),
