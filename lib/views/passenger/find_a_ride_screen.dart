@@ -306,7 +306,7 @@ class _FindARideScreenState extends State<FindARideScreen> {
         List<dynamic> rides = responseBody['rides'];
         List<Map<String, dynamic>> matchingRides = [];
 
-        String pickupAddress = direction == 'From WSO2' ? wso2Address : locationController.text;
+        String pickupAddress = locationController.text;
         LatLng? waypointLatLng = await _getWaypointLatLng(pickupAddress);
 
         for (var ride in rides) {
@@ -331,8 +331,10 @@ class _FindARideScreenState extends State<FindARideScreen> {
             MaterialPageRoute(
               builder: (context) => RideListScreen(
                 rides: matchingRides,
-                waypoint: direction == 'From WSO2' ? wso2Address : locationController.text,
-                //waypointLatLng: waypointLatLng,
+                waypoint: locationController.text,
+                waypointLatLng: waypointLatLng,
+                waytowork: direction == 'To WSO2',
+                date: dateController.text,
               ),
             ),
           );

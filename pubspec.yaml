@@ -95,6 +95,8 @@ flutter:
     - assets/car.png
     - assets/car-icon.png
     - assets/anima.webp
+    - assets/jeep-icon.png
+    - assets/van-icon.png
     - themes/
 
   # An image asset can refer to one or more resolution-specific "variants", see

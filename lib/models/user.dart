@@ -8,7 +8,10 @@ class User {
   final String lastName;
   final UserRole role;
   final UserStatus status;
+  final int seatingCapacity;
   final DriverDetails? driverDetails;
+  final String? phone;
+  final String? createdAt; // Handling the array [timestamp, float] as a string for now
 
   User({
     required this.id,
@@ -17,15 +20,18 @@ class User {
     required this.lastName,
     required this.role,
     required this.status,
+    required this.seatingCapacity,
     this.driverDetails,
+    this.phone,
+    this.createdAt,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'],
-      email: json['email'],
-      firstName: json['firstName'],
-      lastName: json['lastName'],
+      id: json['id'] as String,
+      email: json['email'] as String,
+      firstName: json['firstName'] as String,
+      lastName: json['lastName'] as String,
       role: UserRole.values.firstWhere(
         (role) => role.toString() == 'UserRole.${json['role']}',
         orElse: () => UserRole.passenger,
@@ -34,9 +40,12 @@ class User {
         (status) => status.toString() == 'UserStatus.${json['status']}',
         orElse: () => UserStatus.pending,
       ),
+      seatingCapacity: json['seatingCapacity'] as int,
       driverDetails: json['driverDetails'] != null
           ? DriverDetails.fromJson(json['driverDetails'])
           : null,
+      phone: json['phone'] as String?,
+      createdAt: json['createdAt'] != null ? json['createdAt'].toString() : null,
     );
   }
 }
@@ -46,24 +55,24 @@ class DriverDetails {
   final String vehicleType;
   final String vehicleBrand;
   final String vehicleModel;
-  final String registrationNumber;
-  final int seatsAvailable;
+  final String vehicleRegistrationNumber;
+  final int seatingCapacity;
 
   DriverDetails({
     required this.vehicleType,
     required this.vehicleBrand,
     required this.vehicleModel,
-    required this.registrationNumber,
-    required this.seatsAvailable,
+    required this.vehicleRegistrationNumber,
+    required this.seatingCapacity,
   });
 
   factory DriverDetails.fromJson(Map<String, dynamic> json) {
     return DriverDetails(
-      vehicleType: json['vehicleType'],
-      vehicleBrand: json['vehicleBrand'],
-      vehicleModel: json['vehicleModel'],
-      registrationNumber: json['registrationNumber'],
-      seatsAvailable: json['seatsAvailable'],
+      vehicleType: json['vehicleType'] as String,
+      vehicleBrand: json['vehicleBrand'] as String,
+      vehicleModel: json['vehicleModel'] as String,
+      vehicleRegistrationNumber: json['vehicleRegistrationNumber'] as String,
+      seatingCapacity: json['seatingCapacity'] as int,
     );
   }
 
@@ -72,10 +81,8 @@ class DriverDetails {
       'vehicleType': vehicleType,
       'vehicleBrand': vehicleBrand,
       'vehicleModel': vehicleModel,
-      'registrationNumber': registrationNumber,
-      'seatsAvailable': seatsAvailable,
+      'vehicleRegistrationNumber': vehicleRegistrationNumber,
+      'seatingCapacity': seatingCapacity,
     };
   }
 }
-
-// Enums

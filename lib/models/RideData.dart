@@ -64,7 +64,6 @@ class Ride {
     );
   }
 }
-
 class Passenger {
   final String passengerId;
   final LatLng waypoint;
@@ -81,7 +80,7 @@ class Passenger {
   });
 
   factory Passenger.fromJson(Map<String, dynamic> json) {
-    final waypointJson = json['waypoint'] as Map<String, dynamic>;
+    final waypointJson = json['waypointLN'] as Map<String, dynamic>;
     return Passenger(
       passengerId: json['passengerId'] as String,
       waypoint: LatLng(
@@ -90,11 +89,10 @@ class Passenger {
       ),
       bookingTime: DateTime.parse(json['bookingTime'] as String),
       status: json['status'] as String,
-      cost: json['cost'],
+      cost: double.parse(json['cost'] as String), // Convert string to double
     );
   }
 }
-
 class Route {
   final int index;
   final String duration;
