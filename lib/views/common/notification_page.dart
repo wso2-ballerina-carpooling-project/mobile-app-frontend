@@ -1,46 +1,114 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/config/constant.dart';
+import 'package:http/http.dart' as http; // Added for API call
+import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // Added for JWT token
+import 'dart:convert'; // Added for JSON decoding
 import '../../models/notification_item.dart';
+import 'dart:math' as math;
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Sample notification data
-    final List<NotificationItem> notifications = [
-      NotificationItem(
-        title: "New ride request",
-        message: "John Smith wants to join your ride to Town",
-        time: "2 minutes ago",
-        isRead: false,
-      ),
-      NotificationItem(
-        title: "Ride confirmed",
-        message: "Your ride to Marina Mall has been confirmed",
-        time: "25 minutes ago",
-        isRead: false,
-      ),
-      NotificationItem(
-        title: "Payment received",
-        message: "You received \$5.50 for your recent ride",
-        time: "Yesterday",
-        isRead: true,
-      ),
-      NotificationItem(
-        title: "Ride canceled",
-        message: "Your scheduled ride to Downtown was canceled",
-        time: "2 days ago",
-        isRead: true,
-      ),
-      NotificationItem(
-        title: "Rate your driver",
-        message: "How was your ride with Alex? Please rate your experience",
-        time: "3 days ago",
-        isRead: true,
-      ),
-    ];
+  _NotificationsScreenState createState() => _NotificationsScreenState();
+}
 
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  final storage = FlutterSecureStorage();
+  String? jwtToken;
+  Future<List<NotificationItem>>? _notificationsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadJwtToken();
+  }
+
+  Future<void> _loadJwtToken() async {
+    final token = await storage.read(key: 'jwt_token');
+    setState(() {
+      jwtToken = token;
+      if (jwtToken != null) {
+        _notificationsFuture = _fetchNotifications();
+      }
+    });
+  }
+
+  Future<List<NotificationItem>> _fetchNotifications() async {
+    if (jwtToken == null) {
+      throw Exception('Authentication token not available');
+    }
+
+    const String baseUrl = 'http://192.168.8.109:9090/api'; // Adjust IP as needed
+    final url = Uri.parse('$baseUrl/notifications');
+    print('Requesting: $url with token: $jwtToken');
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $jwtToken',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      print('Response status: ${response.statusCode}, body: ${response.body}');
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        final List<dynamic> notifications = data['queryResult'] as List<dynamic>;
+        return notifications.map((json) {
+          final createdAtString = json['createdAt'] as String;
+          final createdAtList = jsonDecode(createdAtString) as List<dynamic>;
+          final timestamp = (createdAtList[0] as num).toInt(); // Extract integer part
+          final timeAgo = _formatTimeAgo(timestamp);
+          return NotificationItem(
+            title: json['title'] as String,
+            message: json['massage'] as String, // Correct field name
+            time: timeAgo,
+            isRead: json['isread'] as bool, // Correct field name
+          );
+        }).toList();
+      } else {
+        throw Exception('Failed to load notifications: ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching notifications: $e');
+      return [];
+    }
+  }
+
+  String _formatTimeAgo(int timestamp) {
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000; // Current time in seconds
+    final difference = now - timestamp;
+
+    if (difference < 60) {
+      return 'just now';
+    } else if (difference < 3600) {
+      final minutes = (difference / 60).floor();
+      return '$minutes minute${minutes > 1 ? 's' : ''} ago';
+    } else if (difference < 86400) {
+      final hours = (difference / 3600).floor();
+      return '$hours hour${hours > 1 ? 's' : ''} ago';
+    } else if (difference < 604800) {
+      final days = (difference / 86400).floor();
+      return '$days day${days > 1 ? 's' : ''} ago';
+    } else {
+      final weeks = (difference / 604800).floor();
+      return '$weeks week${weeks > 1 ? 's' : ''} ago';
+    }
+  }
+
+  void _markAllAsRead() {
+    // Implement API call to mark all as read if needed
+    setState(() {
+      if (_notificationsFuture != null) {
+        _notificationsFuture = _fetchNotifications(); // Refresh data
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: primaryColor,
       body: SafeArea(
@@ -48,20 +116,30 @@ class NotificationsScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            
-            // Content area with only left side rounded
             Expanded(
               child: Container(
                 margin: const EdgeInsets.only(top: 10),
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(40),
+                    topLeft: Radius.circular(20),
                   ),
                 ),
-                child: notifications.isEmpty
-                    ? _buildEmptyState()
-                    : _buildNotificationsList(notifications),
+                child: _notificationsFuture == null
+                    ? const Center(child: CircularProgressIndicator())
+                    : FutureBuilder<List<NotificationItem>>(
+                        future: _notificationsFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator());
+                          }
+                          if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                            return _buildEmptyState();
+                          }
+                          final notifications = snapshot.data!;
+                          return _buildNotificationsList(notifications);
+                        },
+                      ),
               ),
             ),
           ],
@@ -139,9 +217,7 @@ class NotificationsScreen extends StatelessWidget {
                 ),
               ),
               TextButton(
-                onPressed: () {
-                  // Mark all as read action
-                },
+                onPressed: _markAllAsRead,
                 child: const Text(
                   "Mark all as read",
                   style: TextStyle(
@@ -168,12 +244,12 @@ class NotificationsScreen extends StatelessWidget {
 
 class NotificationListItem extends StatelessWidget {
   final NotificationItem notification;
-  
+
   const NotificationListItem({
     super.key,
     required this.notification,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -194,7 +270,6 @@ class NotificationListItem extends StatelessWidget {
                   color: notification.isRead ? Colors.grey[200] : Colors.blue[100],
                   shape: BoxShape.circle,
                 ),
-                
               ),
               const SizedBox(width: 12),
               Expanded(

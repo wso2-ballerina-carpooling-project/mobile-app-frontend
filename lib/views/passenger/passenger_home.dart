@@ -26,18 +26,22 @@ class _PassengerHomeState extends State<PassengerHome> {
       LastTrip(
         locationName: 'Lakewood Residence',
         address: '165/A8 Main Street, 11,Colombo',
+        cost: "LKR 500"
       ),
       LastTrip(
         locationName: 'Marino Mall',
         address: 'No. 590, Galle Road, Colombo 03',
+        cost: "LKR 500"
       ),
       LastTrip(
         locationName: 'Lakewood Residence',
         address: '165/A8 Main Street, 11,Colombo',
+        cost: "LKR 500"
       ),
       LastTrip(
         locationName: 'Lakewood Residence',
         address: '165/A8 Main Street, 11,Colombo',
+        cost: "LKR 500"
       ),
     ];
 

@@ -25,7 +25,7 @@ class LastTripItem extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'LKR 1,500', // Placeholder earned amount
+                trip.cost, // Placeholder earned amount
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Colors.green,

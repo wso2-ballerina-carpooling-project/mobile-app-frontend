@@ -58,10 +58,7 @@ class _LoginPageState extends State<LoginPage> {
         final prefs = await SharedPreferences.getInstance();
         final token = responseBody['token'];
 
-        await _storage.write(
-          key: 'jwt_token',
-          value: token,
-        );
+        await _storage.write(key: 'jwt_token', value: token);
 
         Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
         await prefs.setString('token', token);
@@ -73,31 +70,38 @@ class _LoginPageState extends State<LoginPage> {
         await prefs.setString('firstName', firstName);
         await prefs.setString('lastName', lastName);
         await prefs.setString('id', id);
+        String? FCM = await prefs.getString("fcm");
+        await ApiService.sendFCM(FCM,id);
         if (decodedToken['status'] == 'pending' && userRole != 'admin') {
           Navigator.pushReplacementNamed(context, '/waiting');
         } else {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => MainNavigation(
-                userRole: userRole == 'driver' ? UserRole.driver : UserRole.passenger,
-              ),
+              builder:
+                  (context) => MainNavigation(
+                    userRole:
+                        userRole == 'driver'
+                            ? UserRole.driver
+                            : UserRole.passenger,
+                  ),
             ),
           );
         }
       } else {
-        final errorMessage = jsonDecode(response.body)['message'] ?? 'Login failed';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
+        final errorMessage =
+            jsonDecode(response.body)['message'] ?? 'Login failed';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
       }
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -129,16 +133,23 @@ class _LoginPageState extends State<LoginPage> {
                       width: double.infinity,
                       decoration: const BoxDecoration(
                         color: bgcolor,
-                        borderRadius: BorderRadius.only(topLeft: Radius.circular(40)),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(40),
+                        ),
                       ),
                       child: SingleChildScrollView(
-                        padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.06),
+                        padding: EdgeInsets.all(
+                          MediaQuery.of(context).size.width * 0.06,
+                        ),
                         child: Form(
                           key: _formKey,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              SizedBox(height: MediaQuery.of(context).size.height * 0.015),
+                              SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.015,
+                              ),
                               const Center(
                                 child: Text(
                                   "Login",
@@ -150,7 +161,10 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                               ),
-                              SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+                              SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.02,
+                              ),
                               CustomInputField(
                                 label: "Email",
                                 controller: _emailController,
@@ -160,13 +174,18 @@ class _LoginPageState extends State<LoginPage> {
                                   if (value == null || value.isEmpty) {
                                     return 'Please enter your email';
                                   }
-                                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                                  if (!RegExp(
+                                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                                  ).hasMatch(value)) {
                                     return 'Please enter a valid email';
                                   }
                                   return null;
                                 },
                               ),
-                              SizedBox(height: MediaQuery.of(context).size.height * 0.015),
+                              SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.015,
+                              ),
                               CustomInputField(
                                 label: "Password",
                                 controller: _passwordController,
@@ -182,14 +201,20 @@ class _LoginPageState extends State<LoginPage> {
                                   return null;
                                 },
                               ),
-                              SizedBox(height: MediaQuery.of(context).size.height * 0.025),
+                              SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.025,
+                              ),
                               CustomButton(
                                 text: _isLoading ? "Logging in..." : "Login",
                                 onPressed: _isLoading ? null : _handleLogin,
                                 useGradient: false,
                                 gradientColors: [mainButtonColor, primaryColor],
                               ),
-                              SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+                              SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.02,
+                              ),
                               Center(
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -203,7 +228,10 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                     GestureDetector(
                                       onTap: () {
-                                        Navigator.pushReplacementNamed(context, '/signup');
+                                        Navigator.pushReplacementNamed(
+                                          context,
+                                          '/signup',
+                                        );
                                       },
                                       child: const Text(
                                         'Sign Up here',
@@ -217,7 +245,10 @@ class _LoginPageState extends State<LoginPage> {
                                   ],
                                 ),
                               ),
-                              SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+                              SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.02,
+                              ),
                             ],
                           ),
                         ),
@@ -233,7 +264,9 @@ class _LoginPageState extends State<LoginPage> {
                     child: Semantics(
                       label: 'Loading, please wait',
                       child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(mainButtonColor),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          mainButtonColor,
+                        ),
                         strokeWidth: 4,
                       ),
                     ),

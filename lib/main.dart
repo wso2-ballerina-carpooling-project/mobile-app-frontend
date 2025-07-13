@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config/routes.dart';
 import 'config/theme.dart';
@@ -59,15 +60,17 @@ Future<void> setupFirebaseMessaging() async {
   }
 
   String? token = await messaging.getToken();
+  final prefs = await SharedPreferences.getInstance();
+  if(token is String){
+    await prefs.setString('fcm', token);
+  }
   print('Device FCM Token: $token');
 
-  // Listen for foreground messages
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     print('🔔 Received message in foreground: ${message.notification?.title}');
     print('🔔 Message body: ${message.notification?.body}');
   });
 
-  // Optional: handle background/terminated message taps
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     print('User tapped on notification');
     // Navigate to a screen, show dialog, etc.

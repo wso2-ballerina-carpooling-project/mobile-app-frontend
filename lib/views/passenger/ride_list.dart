@@ -123,7 +123,7 @@ class _RideListScreenState extends State<RideListScreen> {
       return;
     }
 
-    const String baseUrl = 'http://172.20.10.2:9090/api';
+    const String baseUrl = 'http://192.168.8.109:9090/api';
     final url = Uri.parse('$baseUrl/rides/book');
     final body = jsonEncode({
       'rideId': rideId,
@@ -165,7 +165,7 @@ class _RideListScreenState extends State<RideListScreen> {
     String rideId,
     String token,
   ) async {
-    const String baseUrl = 'http://172.20.10.2:9090/api';
+    const String baseUrl = 'http://192.168.8.109:9090/api';
     final url = Uri.parse('$baseUrl/rides/calculateCost');
     final body = jsonEncode({'rideId': rideId, 'distance': distance});
 
@@ -262,7 +262,7 @@ class _RideListScreenState extends State<RideListScreen> {
     final token = await storage.read(key: 'jwt_token');
     if (token == null || driverId == null) return null;
 
-    const String baseUrl = 'http://172.20.10.2:9090/api';
+    const String baseUrl = 'http://192.168.8.109:9090/api';
     final url = Uri.parse('$baseUrl/driver/$driverId');
 
     try {

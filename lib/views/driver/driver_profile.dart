@@ -200,7 +200,7 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
                 width: double.infinity,
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.only(topLeft: Radius.circular(30)),
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(20)),
                 ),
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
