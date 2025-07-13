@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:intl/intl.dart';
 import 'package:mobile_frontend/config/constant.dart';
+import 'package:mobile_frontend/models/RideData.dart'; // Updated import
+import 'package:mobile_frontend/services/ride_services.dart';
 import 'package:mobile_frontend/views/passenger/find_a_ride_screen.dart';
 import 'package:mobile_frontend/widgets/last_trip_item.dart';
 import 'package:mobile_frontend/models/last_trip.dart';
 import 'package:mobile_frontend/widgets/passender_route_card.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shimmer/shimmer.dart';
 
 class PassengerHome extends StatefulWidget {
   const PassengerHome({super.key});
@@ -14,36 +20,154 @@ class PassengerHome extends StatefulWidget {
 
 class _PassengerHomeState extends State<PassengerHome> {
   bool isRideStarted = true;
+  String? firstName;
+  List<Ride> rides = [];
+  List<LastTrip> lastTrips = [];
+  bool isLoading = true;
+  String? loggedInPassengerId; // To store the logged-in passenger ID
+
+  @override
+  void initState() {
+    super.initState();
+    getUserDetails();
+    getLoggedInPassengerId(); // Fetch logged-in passenger ID
+    refreshData(); // Trigger refresh on load
+  }
+
+  Future<void> refreshData() async {
+    setState(() {
+      isLoading = true;
+    });
+    await Future.wait([fetchRides(), fetchLastTrips()]);
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  Future<void> fetchLastTrips() async {
+    try {
+      final storage = FlutterSecureStorage();
+      final List<Ride> completedRides =
+          await RideService.fetchPassengerCompleted(storage);
+
+      setState(() {
+        lastTrips = completedRides.map((ride) {
+          final passenger = ride.passengers.firstWhere(
+            (p) => p.passengerId == loggedInPassengerId,
+          );
+
+          return LastTrip(
+            locationName: ride.waytowork ? ride.dropoffLocation: passenger.address,
+            address: ride.waytowork ? passenger.address : ride.pickupLocation,
+            cost: "LKR ${passenger.cost.toStringAsFixed(2)}", // Use passenger cost
+          );
+        }).toList().take(4).toList();
+      });
+    } catch (e) {
+      print('Error fetching last trips: $e');
+      setState(() {
+        lastTrips = [];
+      });
+    }
+  }
+
+  Future<void> fetchRides() async {
+    try {
+      final storage = FlutterSecureStorage();
+      final List<Ride> fetchedRides = await RideService.fetchPassengerOngoing(
+        storage,
+      ); // Directly as List<Ride>
+      print(fetchedRides);
+      // Get today and tomorrow in DD/MM/YYYY format
+      final DateFormat formatter = DateFormat('dd/MM/yyyy');
+      final String today = formatter.format(DateTime.now()); // 14/07/2025
+      final String tomorrow = formatter.format(
+        DateTime.now().add(const Duration(days: 1)),
+      ); // 15/07/2025
+
+      // Filter rides for today and tomorrow
+      List<Ride> filteredRides =
+          fetchedRides.where((ride) {
+            return ride.date == today || ride.date == tomorrow;
+          }).toList();
+
+      print(filteredRides);
+
+      // Sort by date and startTime (earliest first)
+      filteredRides.sort((a, b) {
+        final dateTimeA = DateFormat(
+          'dd/MM/yyyy HH:mm',
+        ).parse('${a.date} ${a.startTime}');
+        final dateTimeB = DateFormat(
+          'dd/MM/yyyy HH:mm',
+        ).parse('${b.date} ${b.startTime}');
+        return dateTimeA.compareTo(dateTimeB);
+      });
+
+      // Take up to 2 nearest rides
+      final nearestRides = filteredRides.take(2).toList();
+
+      print('Nearest rides: $nearestRides');
+      setState(() {
+        rides = nearestRides;
+      });
+    } catch (e) {
+      print('Error fetching rides: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error fetching rides: $e')));
+    }
+  }
 
   void trackRide() {
-    // Implement ride tracking functionality
     debugPrint('Tracking ride...');
+  }
+
+  Future<void> getUserDetails() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      firstName = prefs.getString('firstName') ?? 'Driver';
+    });
+  }
+
+  Future<void> getLoggedInPassengerId() async {
+     final prefs = await SharedPreferences.getInstance();
+    // Assuming passengerId is stored in secure storage (adjust key as per your app)
+    final passengerId = await prefs.getString("id");
+    setState(() {
+      loggedInPassengerId = passengerId; // Default to example ID
+    });
+  }
+
+  Widget _buildLastTripPlaceholder() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Column(
+        children: [
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(vertical: 5),
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+              ),
+            ),
+            title: Container(width: 150, height: 16, color: Colors.white),
+            subtitle: Container(width: 200, height: 14, color: Colors.white),
+            trailing: Container(width: 60, height: 16, color: Colors.white),
+          ),
+          Divider(color: Colors.grey.shade300, thickness: 1.0, height: 1.0),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final List<LastTrip> lastTrips = [
-      LastTrip(
-        locationName: 'Lakewood Residence',
-        address: '165/A8 Main Street, 11,Colombo',
-        cost: "LKR 500"
-      ),
-      LastTrip(
-        locationName: 'Marino Mall',
-        address: 'No. 590, Galle Road, Colombo 03',
-        cost: "LKR 500"
-      ),
-      LastTrip(
-        locationName: 'Lakewood Residence',
-        address: '165/A8 Main Street, 11,Colombo',
-        cost: "LKR 500"
-      ),
-      LastTrip(
-        locationName: 'Lakewood Residence',
-        address: '165/A8 Main Street, 11,Colombo',
-        cost: "LKR 500"
-      ),
-    ];
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       backgroundColor: primaryColor,
@@ -58,18 +182,18 @@ class _PassengerHomeState extends State<PassengerHome> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Column(
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Hi, John!",
-                        style: TextStyle(
+                        "Hi, ${firstName ?? '...'}!",
+                        style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                       ),
-                      Text(
+                      const Text(
                         "Need a Lift?",
                         style: TextStyle(fontSize: 18, color: Colors.white),
                       ),
@@ -127,91 +251,161 @@ class _PassengerHomeState extends State<PassengerHome> {
             Expanded(
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.only(
+                padding: EdgeInsets.only(
                   top: 20.0,
-                  left: 20.0,
-                  right: 20.0,
+                  bottom: 10.0,
+                  left: 15.0,
+                  right: 15.0,
                 ),
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.only(topLeft: Radius.circular(20)),
                 ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.only(left: 8, bottom: 8),
-                        child: Text(
-                          "Booking",
+                child: RefreshIndicator(
+                  onRefresh: refreshData,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Upcoming Rides",
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: blackWithOpacity,
                           ),
                         ),
-                      ),
-                      // Route cards in horizontal scroll
-                      SizedBox(
-                        height: 250,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          children: [
-                            // First route card - Going to work
-                            SizedBox(
-                              width: MediaQuery.of(context).size.width * 0.95,
-                              child: RouteCardPassenger(
-                                startLocation: 'University of Moratuwa',
-                                startAddress: 'WSO2, Bandaranayake Mawatha, Colombo 03',
-                                endLocation: 'WSO2',
-                                endAddress: 'Bandaranayake Road',
-                                date: '04/05/2025',
-                                time: '9.00 am',
-                                isRideStarted: true,
-                                isGoingToWork: true,
-                                onTrackPressed: trackRide,
-                              ),
-                            ),
-                            const SizedBox(width: 15),
-                            // Second route card - Going home
-                            SizedBox(
-                              width: MediaQuery.of(context).size.width * 0.85,
-                              child: RouteCardPassenger(
-                                startLocation: 'Moratuwa',
-                                startAddress: 'Bandaranayake Road',
-                                endLocation: 'WSO2',
-                                endAddress: 'Bandaranayake Road',
-                                date: '04/05/2025',
-                                time: '10.00 pm',
-                                isRideStarted: false,
-                                isGoingToWork: false,
-                                onTrackPressed: trackRide,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      const Padding(
-                        padding: EdgeInsets.only(left: 8, bottom: 8),
-                        child: Text(
-                          "Your last trip",
+                        SizedBox(height: 15),
+                        isLoading
+                            ? SizedBox(
+                                height: 210,
+                                child: ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: 3, // Show 3 placeholder cards
+                                  itemBuilder: (context, index) {
+                                    return Padding(
+                                      padding: const EdgeInsets.only(
+                                        right: 15.0,
+                                        left: 0,
+                                      ),
+                                      child: SizedBox(
+                                        width: screenWidth * 0.95,
+                                        child: Shimmer.fromColors(
+                                          baseColor: Colors.grey[300]!,
+                                          highlightColor: Colors.grey[100]!,
+                                          child: Card(
+                                            elevation: 4,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(
+                                                12,
+                                              ),
+                                            ),
+                                            child: Container(
+                                              padding: EdgeInsets.all(16),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Container(
+                                                    width: double.infinity,
+                                                    height: 20,
+                                                    color: Colors.white,
+                                                  ),
+                                                  SizedBox(height: 10),
+                                                  Container(
+                                                    width: 150,
+                                                    height: 16,
+                                                    color: Colors.white,
+                                                  ),
+                                                  SizedBox(height: 10),
+                                                  Container(
+                                                    width: 100,
+                                                    height: 16,
+                                                    color: Colors.white,
+                                                  ),
+                                                  Spacer(),
+                                                  Container(
+                                                    width: 80,
+                                                    height: 36,
+                                                    color: Colors.white,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              )
+                            : rides.isEmpty
+                                ? Center(child: Text('No active rides found'))
+                                : SizedBox(
+                                    height: 210,
+                                    child: ListView.builder(
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: rides.length,
+                                      itemBuilder: (context, index) {
+                                        final ride = rides[index];
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            right: 15.0,
+                                            left: 0,
+                                          ),
+                                          child: SizedBox(
+                                            width: screenWidth * 0.95,
+                                            child: RouteCardPassenger(
+                                              startLocation:
+                                                  ride.pickupLocation,
+                                              startAddress: ride.pickupLocation,
+                                              endLocation:
+                                                  ride.dropoffLocation,
+                                              endAddress: ride.dropoffLocation,
+                                              date: ride.date,
+                                              time: ride.startTime,
+                                              isRideStarted: ride.status == 'start',
+                                              isGoingToWork: ride.waytowork,
+                                              onTrackPressed: trackRide,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                        SizedBox(height: 30),
+                        const Text(
+                          "Last Rides",
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: blackWithOpacity,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      // Last trips list
-                      Column(
-                        children:
-                            lastTrips
-                                .map((trip) => LastTripItem(trip: trip))
-                                .toList(),
-                      ),
-                    ],
+                        const SizedBox(height: 15),
+                        Divider(
+                          color: Colors.grey.shade300,
+                          thickness: 1.0,
+                          height: 1.0,
+                        ),
+                        isLoading
+                            ? Column(
+                                children: List.generate(
+                                  3, // Show 3 placeholder last trip items
+                                  (index) => _buildLastTripPlaceholder(),
+                                ),
+                              )
+                            : lastTrips.isEmpty
+                                ? Center(child: Text('No last rides found'))
+                                : Column(
+                                    children:
+                                        lastTrips
+                                            .map((trip) => LastTripItem(trip: trip))
+                                            .toList(),
+                                  ),
+                      ],
+                    ),
                   ),
                 ),
               ),
