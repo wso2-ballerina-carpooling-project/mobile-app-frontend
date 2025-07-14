@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/models/RideData.dart';
-import 'package:mobile_frontend/views/auth/driver_details.dart';
 import 'package:mobile_frontend/views/driver/ride_start_screen.dart';
 
 class RouteCard extends StatelessWidget {

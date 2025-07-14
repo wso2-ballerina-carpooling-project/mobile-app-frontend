@@ -64,7 +64,7 @@ class _PassengerRideCardState extends State<PassengerRideCard> {
           .map((entry) {
             final index = entry.key;
             final waypoint = entry.value;
-            if (waypoint != null && index + 1 < points.length) {
+            if (index + 1 < points.length) {
               return Marker(
                 markerId: MarkerId('waypoint_$index'),
                 position: points[index + 1],
