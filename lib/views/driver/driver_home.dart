@@ -67,6 +67,17 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     }
   }
 
+    String _calculateTotalCost(List<Passenger> passengers) {
+      if (passengers.isEmpty) {
+        return 'LKR 0';
+      }
+      final totalCost = passengers.fold<double>(
+        0,
+        (sum, passenger) => sum + passenger.cost,
+      );
+      return 'LKR ${totalCost.toInt()}';
+    }
+
   Future<void> fetchLastTrips() async {
     try {
       final storage = FlutterSecureStorage();
@@ -82,7 +93,8 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                     locationName:
                         ride.pickupLocation, 
                     address:
-                        ride.dropoffLocation, 
+                        ride.dropoffLocation,
+                    cost: _calculateTotalCost(ride.passengers)
                   ),
                 )
                 .toList();
@@ -295,6 +307,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                                       width: screenWidth * 0.95,
                                       child: RouteCard(
                                         rideId: ride.id,
+                                        ride:ride,
                                         Date: ride.date,
                                         startTime: ride.startTime,
                                         duration: ride.duration,
@@ -302,7 +315,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                                         endLocation: ride.dropoffLocation,
                                         peopleJoined:
                                             '${ride.passengerCount}/${ride.seatingCapacity}',
-                                        price: '\$45.00',
+                                        passengers: ride.passengers,
                                         onStartPressed: () {
                                           print('Start pressed ${ride.id}');
                                         },

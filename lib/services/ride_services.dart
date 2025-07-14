@@ -76,7 +76,9 @@ class RideService {
     }
   }
 
- static Future<List<Ride>> fetchDriverCompleted(FlutterSecureStorage storage) async {
+  static Future<List<Ride>> fetchDriverCompleted(
+    FlutterSecureStorage storage,
+  ) async {
     try {
       String? token = await storage.read(key: 'jwt_token');
       if (token == null) return [];
@@ -89,7 +91,9 @@ class RideService {
       print('Response status code: ${response.statusCode}');
 
       Map<String, dynamic> payload = Jwt.parseJwt(token);
-      int seatingCapacity = int.parse(payload['driverDetails']['seatingCapacity'].toString());
+      int seatingCapacity = int.parse(
+        payload['driverDetails']['seatingCapacity'].toString(),
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -115,7 +119,9 @@ class RideService {
     }
   }
 
-  static Future<List<Ride>> fetchDriverOngoing(FlutterSecureStorage storage) async {
+  static Future<List<Ride>> fetchDriverOngoing(
+    FlutterSecureStorage storage,
+  ) async {
     try {
       String? token = await storage.read(key: 'jwt_token');
       if (token == null) return [];
@@ -136,7 +142,9 @@ class RideService {
         });
 
         return rideList
-            .map((rideJson) => Ride.fromJson(rideJson, 0)) // Adjust seatingCapacity if needed
+            .map(
+              (rideJson) => Ride.fromJson(rideJson, 0),
+            ) // Adjust seatingCapacity if needed
             .where((ride) => ride.status == 'active')
             .toList();
       }
@@ -147,7 +155,9 @@ class RideService {
     }
   }
 
-  static Future<List<Ride>> fetchDriverCanceled(FlutterSecureStorage storage) async {
+  static Future<List<Ride>> fetchDriverCanceled(
+    FlutterSecureStorage storage,
+  ) async {
     try {
       String? token = await storage.read(key: 'jwt_token');
       if (token == null) return [];
@@ -168,7 +178,9 @@ class RideService {
         });
 
         return rideList
-            .map((rideJson) => Ride.fromJson(rideJson, 0)) // Adjust seatingCapacity if needed
+            .map(
+              (rideJson) => Ride.fromJson(rideJson, 0),
+            ) // Adjust seatingCapacity if needed
             .where((ride) => ride.status == 'cancel')
             .toList();
       }
@@ -179,19 +191,22 @@ class RideService {
     }
   }
 
-  static Future<List<Ride>> fetchPassengerOngoing(FlutterSecureStorage storage) async {
+  static Future<List<Ride>> fetchPassengerOngoing(
+    FlutterSecureStorage storage,
+  ) async {
     try {
       String? token = await storage.read(key: 'jwt_token');
       if (token == null) return [];
 
       final response = await http.get(
-        Uri.parse('$baseUrl/ongoingPassengerRide'),
+        Uri.parse('$baseUrl/passengerOngoingRide'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final List<dynamic> rideList = data['rides'];
+        print(data);
+        final List<dynamic> rideList = data['rideDoc'];
 
         rideList.sort((a, b) {
           DateTime dateA = _parseDate(a['date']);
@@ -199,10 +214,7 @@ class RideService {
           return dateB.compareTo(dateA);
         });
 
-        return rideList
-            .map((rideJson) => Ride.fromJson(rideJson, 0))
-            .where((ride) => ride.status == 'ongoing')
-            .toList();
+        return rideList.map((rideJson) => Ride.fromJson(rideJson, 0)).toList();
       }
       return [];
     } catch (e) {
@@ -211,19 +223,21 @@ class RideService {
     }
   }
 
-  static Future<List<Ride>> fetchPassengerCompleted(FlutterSecureStorage storage) async {
+  static Future<List<Ride>> fetchPassengerCompleted(
+    FlutterSecureStorage storage,
+  ) async {
     try {
       String? token = await storage.read(key: 'jwt_token');
       if (token == null) return [];
 
       final response = await http.get(
-        Uri.parse('$baseUrl/completedPassengerRide'),
+        Uri.parse('$baseUrl/passengerCompleteRide'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final List<dynamic> rideList = data['rides'];
+        final List<dynamic> rideList = data['rideDoc'];
 
         rideList.sort((a, b) {
           DateTime dateA = _parseDate(a['date']);
@@ -231,10 +245,7 @@ class RideService {
           return dateB.compareTo(dateA);
         });
 
-        return rideList
-            .map((rideJson) => Ride.fromJson(rideJson, 0))
-            .where((ride) => ride.status == 'completed')
-            .toList();
+        return rideList.map((rideJson) => Ride.fromJson(rideJson, 0)).toList();
       }
       return [];
     } catch (e) {
@@ -243,7 +254,9 @@ class RideService {
     }
   }
 
-  static Future<List<Ride>> fetchPassengerCanceled(FlutterSecureStorage storage) async {
+  static Future<List<Ride>> fetchPassengerCanceled(
+    FlutterSecureStorage storage,
+  ) async {
     try {
       String? token = await storage.read(key: 'jwt_token');
       if (token == null) return [];
@@ -278,7 +291,8 @@ class RideService {
   static DateTime _parseDate(String dateStr) {
     try {
       final parts = dateStr.split('/');
-      if (parts.length != 3) throw FormatException('Invalid date format: $dateStr');
+      if (parts.length != 3)
+        throw FormatException('Invalid date format: $dateStr');
       final day = int.parse(parts[0]);
       final month = int.parse(parts[1]);
       final year = int.parse(parts[2]);
@@ -288,4 +302,4 @@ class RideService {
       return DateTime(1970, 1, 1);
     }
   }
-  }
+}

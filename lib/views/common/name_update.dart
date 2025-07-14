@@ -53,7 +53,6 @@ class _NameUpdateScreenState extends State<NameUpdateScreen> {
       setState(() {
         _isLoading = true;
       });
-
       try {
         final storage = const FlutterSecureStorage();
         final token = await storage.read(key: 'jwt_token') ?? '';
@@ -62,11 +61,8 @@ class _NameUpdateScreenState extends State<NameUpdateScreen> {
           'firstName': _firstNameController.text,
           'lastName': _lastNameController.text,
         };
-
         final response = await ProfileService.editName(nameData, token);
-
         if (response.statusCode == 200) {
-          // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Name updated successfully!')),
           );
@@ -74,14 +70,13 @@ class _NameUpdateScreenState extends State<NameUpdateScreen> {
           final newToken = response.headers['authorization']?.replaceFirst('Bearer ', '') ?? token;
           if (newToken != token) {
             await storage.write(key: 'jwt_token', value: newToken);
-             final prefs = await SharedPreferences.getInstance();
+            final prefs = await SharedPreferences.getInstance();
             Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
             await prefs.setString('token', token);
             final firstName = decodedToken['firstName'];
             final lastName = decodedToken['lastName'];
             final id = decodedToken['id'];
-            await prefs.setString('firstName', firstName);
-            await prefs.setString('firstName', firstName);
+              await prefs.setString('firstName', firstName);
             await prefs.setString('lastName', lastName);
             await prefs.setString('id', id);
             final payload = Jwt.parseJwt(newToken);

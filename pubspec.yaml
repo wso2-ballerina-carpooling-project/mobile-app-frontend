@@ -50,6 +50,9 @@ dependencies:
   intl: ^0.20.2
   firebase_messaging: ^15.2.9
   shimmer: ^3.0.0
+  url_launcher: ^6.3.2
+  firebase_core: ^3.15.1
+  location: ^8.0.1
   
 dependency_overrides:
   flutter_keyboard_visibility:
@@ -92,7 +95,10 @@ flutter:
     - assets/logo.png
     - assets/company.png
     - assets/car.png
+    - assets/car-icon.png
     - assets/anima.webp
+    - assets/jeep-icon.png
+    - assets/van-icon.png
     - themes/
 
   # An image asset can refer to one or more resolution-specific "variants", see

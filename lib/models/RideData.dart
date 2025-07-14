@@ -15,8 +15,9 @@ class Ride {
   final int passengerCount;
   final String id;
   final String? reason;
-  final List<Passenger> passengers; // Added for waypoints
-  final Route route; // Added for polyline
+  final bool waytowork;
+  final List<Passenger> passengers;
+  final Route route;
 
   Ride({
     required this.rideId,
@@ -32,8 +33,9 @@ class Ride {
     required this.seat,
     required this.passengerCount,
     required this.id,
-    required this.passengers,
     required this.reason,
+    required this.waytowork,
+    required this.passengers,
     required this.route,
   });
 
@@ -53,37 +55,47 @@ class Ride {
       seatingCapacity: seatingCapacity,
       passengerCount: (json['passengers'] as List<dynamic>).length,
       id: json['id'] as String,
-      passengers: (json['passengers'] as List<dynamic>)
-          .map((p) => Passenger.fromJson(p))
-          .toList(),
+      waytowork: json['waytowork'] as bool,
+      passengers:
+          (json['passengers'] as List<dynamic>)
+              .map((p) => Passenger.fromJson(p))
+              .toList(),
       route: Route.fromJson(json['route']),
     );
   }
 }
-
 class Passenger {
   final String passengerId;
-  final String waypoint;
+  final LatLng waypoint;
+  final String address;
   final DateTime bookingTime;
   final String status;
+  final double cost;
 
   Passenger({
     required this.passengerId,
     required this.waypoint,
+    required this.address,
     required this.bookingTime,
     required this.status,
+    required this.cost,
   });
 
   factory Passenger.fromJson(Map<String, dynamic> json) {
+    final waypointJson = json['waypointLN'] as Map<String, dynamic>;
     return Passenger(
-      passengerId: json['passengerId'],
-      waypoint: json['waypoint'],
-      bookingTime: DateTime.parse(json['bookingTime']),
-      status: json['status'],
+      passengerId: json['passengerId'] as String,
+      address: json['waypoint'] as String,
+      waypoint: LatLng(
+        double.parse(waypointJson['latitude'] as String),
+        double.parse(waypointJson['longitude'] as String),
+      ),
+      bookingTime: DateTime.parse(json['bookingTime'] as String),
+      status: json['status'] as String,
+      cost: double.parse(json['cost'] as String), // Convert string to double
     );
   }
 }
-
 class Route {
   final int index;
   final String duration;
@@ -102,12 +114,15 @@ class Route {
       index: json['index'] as int,
       duration: json['duration'] as String,
       distance: json['distance'] as String,
-      polyline: (json['polyline'] as List<dynamic>)
-          .map((p) => LatLng(
-                double.parse(p['latitude']),
-                double.parse(p['longitude']),
-              ))
-          .toList(),
+      polyline:
+          (json['polyline'] as List<dynamic>)
+              .map(
+                (p) => LatLng(
+                  double.parse(p['latitude'] as String),
+                  double.parse(p['longitude'] as String),
+                ),
+              )
+              .toList(),
     );
   }
 }

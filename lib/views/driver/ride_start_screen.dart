@@ -1,239 +1,438 @@
-
 import 'dart:async';
-import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:mobile_frontend/widgets/Map_Related/LocationRow.dart';
-import 'dart:ui' as ui;
-import 'dart:math' show atan2, pi;
+import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:web_socket_channel/status.dart' as status;
+import 'package:mobile_frontend/config/constant.dart';
+import 'package:mobile_frontend/models/RideData.dart';
 
-class RideStartScreen extends StatefulWidget {
-  final String rideId;
-  const RideStartScreen({super.key, required this.rideId});
+class DriverRideTracking extends StatefulWidget {
+  final Ride ride;
+  const DriverRideTracking({super.key, required this.ride});
 
   @override
-  State<RideStartScreen> createState() => _RideStartScreenState();
+  State<DriverRideTracking> createState() => _DriverRideTrackingState();
 }
 
-class _RideStartScreenState extends State<RideStartScreen> {
-  final _storage = FlutterSecureStorage();
-  WebSocketChannel? _channel;
-  Timer? _heartbeatTimer;
-  bool _isWebSocketConnected = false;
-  final String _webSocketUrl = 'ws://10.0.2.2:8080/ws';
-  
-  BitmapDescriptor? carIcon;
-  Marker? vehicleMarker;
-  Timer? locationUpdateTimer;
-  int markerRotation = 0;
-  LatLng? previousPosition;
-
-  final Completer<GoogleMapController> googleMapCompleterController = Completer<GoogleMapController>();
-  GoogleMapController? controllerGoogleMap;
-
-  Position? currentPositionOfUser;
-  Set<Marker> markersSet = {};
-  Set<Polyline> polylineSet = {};
+class _DriverRideTrackingState extends State<DriverRideTracking> {
+  late GoogleMapController mapController;
+  Set<Marker> markers = {};
+  Set<Polyline> polylines = {};
   List<LatLng> polylineCoordinates = [];
-  bool showPickupDialog = false;
+  Position? currentPosition;
   bool isLoading = true;
-  Map<String, dynamic>? rideData;
-  int currentWaypointIndex = 0;
-  bool rideEnded = false;
-
-  final double arrivalThresholdMeters = 50.0;
-  final String googleAPIKey = "AIzaSyC8GlueGNwtpZjPUjF6SWnxUHyC5GA82KE";
-
-  static const CameraPosition _initialCameraPosition = CameraPosition(
-    target: LatLng(6.8015, 79.9226),
-    zoom: 14.4746,
-  );
+  Timer? locationUpdateTimer;
+  List<Passenger> pickedUpPassengers = [];
+  Passenger? nextPassenger;
+  String? distanceText;
+  String? durationText;
+  String? etaText;
+  String? passengerName;
+  WebSocketChannel? _channel;
+  bool _isWebSocketConnected = false;
+  Timer? _heartbeatTimer;
+  Map<String, dynamic> passengerDetails = {};
+  Map<String, String> waypointAddresses = {};
 
   @override
   void initState() {
     super.initState();
     _checkLocationPermission();
-    _createCarMarkerIcon();
     _initializeWebSocket();
-    _fetchRideData();
   }
 
   @override
   void dispose() {
-    _heartbeatTimer?.cancel();
-    _closeWebSocket();
     locationUpdateTimer?.cancel();
-    controllerGoogleMap?.dispose();
+    _closeWebSocket();
+    mapController.dispose();
     super.dispose();
   }
 
-  Future<void> _fetchRideData() async {
-    String? token = await _storage.read(key: 'jwt_token');
-    if (token == null || token.isEmpty) {
-      _showError('Authentication token not found. Please log in again.');
-      Navigator.pushReplacementNamed(context, '/login');
-      return;
-    }
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
 
+  Future<void> updateMapTheme(GoogleMapController controller) async {
     try {
-      final response = await http.post(
-        Uri.parse('http://10.52.177.103:9090/api/getStartRide'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({'rideId': widget.rideId}),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['rides'] != null && data['rides'] is List && data['rides'].isNotEmpty) {
-          setState(() {
-            rideData = data;
-            isLoading = false;
-          });
-          await _initializeRoute();
-        } else {
-          _showError('Invalid ride data received from server');
-        }
-      } else {
-        _showError('Failed to fetch ride data: ${response.statusCode} - ${response.body}');
-      }
+      String styleJson = await getJsonFileFromThemes('themes/map_style.json');
+      await controller.setMapStyle(styleJson);
     } catch (e) {
-      _showError('Error fetching ride data: $e');
+      debugPrint('Error setting map style: $e');
     }
   }
 
-  Future<void> _initializeRoute() async {
-    if (rideData == null) return;
+  Future<String> getJsonFileFromThemes(String path) async {
+    return await rootBundle.loadString(path);
+  }
 
-    final polyline = rideData!['rides'][0]['route']['polyline'] as List;
-    final startLocation = LatLng(
-      double.parse(polyline[0]['latitude']),
-      double.parse(polyline[0]['longitude']),
+  Future<void> _checkLocationPermission() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        _showError('Location permissions are denied');
+        return;
+      }
+    }
+    if (permission == LocationPermission.deniedForever) {
+      _showError('Location permissions are permanently denied');
+      return;
+    }
+    _startLocationUpdates();
+  }
+
+  void _startLocationUpdates() {
+    _getCurrentLocation();
+    locationUpdateTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _updateDriverLocation();
+    });
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      setState(() {
+        currentPosition = position;
+        _updateMarkersAndRoute(LatLng(position.latitude, position.longitude));
+        isLoading = false;
+      });
+    } catch (e) {
+      _showError('Error getting location: $e');
+    }
+  }
+
+  Future<void> _updateDriverLocation() async {
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      LatLng newPosition = LatLng(position.latitude, position.longitude);
+      setState(() {
+        currentPosition = position;
+        _updateMarkersAndRoute(newPosition);
+      });
+      _sendLocationUpdate(
+        newPosition,
+        speed: position.speed,
+        heading: position.heading,
+      );
+      _animateCameraToPosition(newPosition);
+    } catch (e) {
+      _showError('Error updating location: $e');
+    }
+  }
+
+  void _updateMarkersAndRoute(LatLng driverPosition) {
+    _addDriverMarker(driverPosition);
+    if (pickedUpPassengers.length < widget.ride.passengers.length) {
+      nextPassenger = _getNearestPassenger(driverPosition);
+      if (nextPassenger != null) {
+        _fetchDrivingRoute(driverPosition, nextPassenger!.waypoint);
+      }
+    } else {
+      _fetchDrivingRoute(driverPosition, widget.ride.route.polyline.last);
+    }
+  }
+
+  Passenger? _getNearestPassenger(LatLng driverPosition) {
+    List<Passenger> remainingPassengers =
+        widget.ride.passengers
+            .where((p) => !pickedUpPassengers.contains(p))
+            .toList();
+    if (remainingPassengers.isEmpty) return null;
+
+    Passenger nearestPassenger = remainingPassengers[0];
+    double minDistance = _calculateDistance(
+      driverPosition,
+      nearestPassenger.waypoint,
     );
 
-    await getCurrentLiveLocationOfUser();
-    setState(() {
-      polylineCoordinates = polyline
-          .map((point) => LatLng(
-                double.parse(point['latitude']),
-                double.parse(point['longitude']),
-              ))
-          .toList();
-      _createPolyline();
-    });
-
-    await _drawRouteToNextWaypoint(startLocation);
-  }
-
-  Future<void> _drawRouteToNextWaypoint(LatLng start) async {
-    if (rideData == null || currentPositionOfUser == null) return;
-
-    final passengers = rideData!['rides'][0]['passengers'] as List;
-    if (currentWaypointIndex >= passengers.length && !rideEnded) {
-      final endLocation = LatLng(
-        double.parse(rideData!['rides'][0]['route']['polyline'].last['latitude']),
-        double.parse(rideData!['rides'][0]['route']['polyline'].last['longitude']),
-      );
-      await getDirectionsWithWaypoints(
-        LatLng(currentPositionOfUser!.latitude, currentPositionOfUser!.longitude),
-        [],
-        endLocation,
-      );
-      _addDestinationMarker(endLocation);
-      return;
-    }
-
-    if (currentWaypointIndex < passengers.length) {
-      final waypointAddress = passengers[currentWaypointIndex]['waypoint'];
-      debugPrint('Geocoding waypoint: $waypointAddress');
-      final waypointLocation = await _geocodeAddress(waypointAddress);
-      if (waypointLocation != null) {
-        debugPrint('Geocoded waypoint to: ${waypointLocation.latitude}, ${waypointLocation.longitude}');
-        await getDirectionsWithWaypoints(
-          LatLng(currentPositionOfUser!.latitude, currentPositionOfUser!.longitude),
-          [],
-          waypointLocation,
-        );
-        _addWaypointMarker(waypointLocation, currentWaypointIndex);
-      } else {
-        _showError('Failed to geocode waypoint: $waypointAddress');
+    for (var passenger in remainingPassengers.skip(1)) {
+      double distance = _calculateDistance(driverPosition, passenger.waypoint);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestPassenger = passenger;
       }
     }
+    return nearestPassenger;
   }
 
-  Future<LatLng?> _geocodeAddress(String address) async {
+  Future<Map<String, dynamic>> _fetchPassengerDetails(
+    String passengerId,
+  ) async {
+    const String baseUrl =
+        'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
+    final url = Uri.parse('$baseUrl/passenger/$passengerId');
+
     try {
-      final response = await http.get(
-        Uri.parse(
-          'https://maps.googleapis.com/maps/api/geocode/json'
-          '?address=${Uri.encodeComponent(address)}'
-          '&components=country:LK' // Restrict to Sri Lanka
-          '&key=$googleAPIKey',
-        ),
-      );
+      final response = await http
+          .get(url, headers: {'Content-Type': 'application/json'})
+          .timeout(const Duration(seconds: 10));
+
+      print('Response status: ${response.statusCode}, body: ${response.body}');
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['status'] == 'OK' && data['results'].isNotEmpty) {
-          final location = data['results'][0]['geometry']['location'];
-          final latLng = LatLng(location['lat'], location['lng']);
-          // Validate coordinates to avoid common mistakes
-          if (latLng.latitude >= 5.9 && latLng.latitude <= 9.8 && 
-              latLng.longitude >= 79.6 && latLng.longitude <= 81.9) {
-            return latLng;
+        final decodedResponse =
+            jsonDecode(response.body) as Map<String, dynamic>;
+        final userDetails =
+            decodedResponse['User'] as Map<String, dynamic>? ?? {};
+        setState(() {
+          passengerDetails[passengerId] = userDetails;
+          if (nextPassenger?.passengerId == passengerId) {
+            passengerName = userDetails['firstName'] as String? ?? 'Unknown';
           }
-          debugPrint('Invalid coordinates for $address: $latLng');
-          return null;
+        });
+        return userDetails;
+      }
+      print(
+        'Failed with status: ${response.statusCode}, body: ${response.body}',
+      );
+      return {};
+    } catch (e) {
+      print('Error fetching passenger details: $e');
+      return {};
+    }
+  }
+
+  Future<void> _fetchWaypointAddress(
+    String passengerId,
+    LatLng waypoint,
+  ) async {
+    try {
+      String url =
+          'https://maps.googleapis.com/maps/api/geocode/json?latlng=${waypoint.latitude},${waypoint.longitude}&key=AIzaSyBJToHkeu0EhfzRM64HXhCg2lil_Kg9pSE';
+      var response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        var decodedData = jsonDecode(response.body);
+        if (decodedData['status'] == 'OK') {
+          setState(() {
+            waypointAddresses[passengerId] =
+                decodedData['results'][0]['formatted_address'] as String;
+          });
         } else {
-          debugPrint('Geocoding failed: ${data['status']} - ${data['error_message']}');
-          return null;
+          _showError(
+            'Failed to fetch waypoint address: ${decodedData['status']}',
+          );
         }
       } else {
-        debugPrint('Geocoding request failed: ${response.statusCode}');
-        return null;
+        _showError('Failed to get waypoint address: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('Error geocoding address: $e');
-      return null;
+      _showError('Error fetching waypoint address: $e');
     }
   }
 
-  Future<Map<String, dynamic>?> _fetchPassengerDetails(String passengerId) async {
-    String? token = await _storage.read(key: 'jwt_token');
-    if (token == null || token.isEmpty) {
-      _showError('Authentication token not found');
-      return null;
-    }
-
+  Future<void> _fetchDrivingRoute(LatLng origin, LatLng destination) async {
     try {
-      final response = await http.get(
-        Uri.parse('http://10.52.177.103:9090/api/passenger/$passengerId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+      // Fetch passenger details if routing to a passenger
+      if (pickedUpPassengers.length < widget.ride.passengers.length &&
+          nextPassenger != null) {
+        if (passengerDetails[nextPassenger!.passengerId] == null) {
+          await _fetchPassengerDetails(nextPassenger!.passengerId);
+        } else {
+          
+        }
+        if (waypointAddresses[nextPassenger!.passengerId] == null) {
+          await _fetchWaypointAddress(
+            nextPassenger!.passengerId,
+            nextPassenger!.waypoint,
+          );
+        }
+      } else {
+        setState(() {
+          passengerName = null;
+        });
       }
-      _showError('Failed to fetch passenger details: ${response.statusCode}');
-      return null;
+
+      // Find the closest point on the route polyline to the driver's position
+      int startIndex = _findClosestPolylineIndex(origin);
+      // Find the closest point on the route polyline to the destination
+      int endIndex = _findClosestPolylineIndex(destination);
+
+      // Ensure startIndex is before endIndex
+      if (startIndex > endIndex) {
+        int temp = startIndex;
+        startIndex = endIndex;
+        endIndex = temp;
+      }
+
+      // Extract the polyline segment from startIndex to endIndex
+      polylineCoordinates.clear();
+      polylineCoordinates.addAll(
+        widget.ride.route.polyline.sublist(startIndex, endIndex + 1),
+      );
+      _createPolyline();
+
+      // Fetch real-time distance and duration using Distance Matrix API
+      String url =
+          'https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origin.latitude},${origin.longitude}&destinations=${destination.latitude},${destination.longitude}&mode=driving&departure_time=now&traffic_model=best_guess&units=metric&key=AIzaSyBJToHkeu0EhfzRM64HXhCg2lil_Kg9pSE';
+
+      var response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        var decodedData = jsonDecode(response.body);
+        if (decodedData['status'] == 'OK') {
+          var element = decodedData['rows'][0]['elements'][0];
+          if (element['status'] == 'OK') {
+            setState(() {
+              distanceText = element['distance']['text'];
+              durationText = element['duration_in_traffic']['text'];
+              int durationSeconds = element['duration_in_traffic']['value'];
+              DateTime eta = DateTime.now().add(
+                Duration(seconds: durationSeconds),
+              );
+              etaText = '${eta.hour}:${eta.minute.toString().padLeft(2, '0')}';
+            });
+          } else {
+            _showError('Distance Matrix API error: ${element['status']}');
+          }
+        } else {
+          _showError('Failed to fetch distance data: ${decodedData['status']}');
+        }
+      } else {
+        _showError('Failed to get distance data: ${response.statusCode}');
+      }
     } catch (e) {
-      _showError('Error fetching passenger details: $e');
-      return null;
+      _showError('Error generating route or fetching distance: $e');
     }
+  }
+
+  int _findClosestPolylineIndex(LatLng position) {
+    int closestIndex = 0;
+    double minDistance = _calculateDistance(
+      position,
+      widget.ride.route.polyline[0],
+    );
+
+    for (int i = 1; i < widget.ride.route.polyline.length; i++) {
+      double distance = _calculateDistance(
+        position,
+        widget.ride.route.polyline[i],
+      );
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestIndex = i;
+      }
+    }
+    return closestIndex;
+  }
+
+  void _createPolyline() {
+    polylines.clear();
+    if (polylineCoordinates.isNotEmpty) {
+      polylines.add(
+        Polyline(
+          polylineId: const PolylineId('route'),
+          color: Colors.blue,
+          points: polylineCoordinates,
+          width: 5,
+          jointType: JointType.round,
+        ),
+      );
+      setState(() {});
+    }
+  }
+
+  void _addDriverMarker(LatLng position) {
+    markers.clear();
+    markers.add(
+      Marker(
+        markerId: const MarkerId('driver'),
+        position: position,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow),
+      ),
+    );
+    markers.add(
+      Marker(
+        markerId: const MarkerId('start'),
+        position: widget.ride.route.polyline.first,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+        infoWindow: InfoWindow(title: widget.ride.pickupLocation),
+      ),
+    );
+    markers.add(
+      Marker(
+        markerId: const MarkerId('end'),
+        position: widget.ride.route.polyline.last,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        infoWindow: InfoWindow(title: widget.ride.dropoffLocation),
+      ),
+    );
+    for (var passenger in widget.ride.passengers) {
+      if (!pickedUpPassengers.contains(passenger)) {
+        markers.add(
+          Marker(
+            markerId: MarkerId('passenger_${passenger.passengerId}'),
+            position: passenger.waypoint,
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueBlue,
+            ),
+            infoWindow: InfoWindow(
+              title:
+                  waypointAddresses[passenger.passengerId] ?? passenger.address,
+            ),
+          ),
+        );
+      }
+    }
+    setState(() {});
+  }
+
+  void _animateCameraToPosition(LatLng position) {
+    mapController.animateCamera(
+      CameraUpdate.newLatLngZoom(position, 14.0),
+      duration: const Duration(milliseconds: 500),
+    );
+  }
+
+  double _calculateDistance(LatLng point1, LatLng point2) {
+    const double earthRadius = 6371000; // meters
+    final lat1 = point1.latitude * pi / 180;
+    final lat2 = point2.latitude * pi / 180;
+    final deltaLat = (point2.latitude - point1.latitude) * pi / 180;
+    final deltaLon = (point2.longitude - point1.longitude) * pi / 180;
+
+    final a =
+        sin(deltaLat / 2) * sin(deltaLat / 2) +
+        cos(lat1) * cos(lat2) * sin(deltaLon / 2) * sin(deltaLon / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return earthRadius * c;
+  }
+
+  void _confirmPassengerPickup(Passenger passenger) {
+    setState(() {
+      pickedUpPassengers.add(passenger);
+      nextPassenger = _getNearestPassenger(
+        LatLng(currentPosition!.latitude, currentPosition!.longitude),
+      );
+      distanceText = null;
+      durationText = null;
+      etaText = null;
+      passengerName = null;
+    });
+    _updateMarkersAndRoute(
+      LatLng(currentPosition!.latitude, currentPosition!.longitude),
+    );
   }
 
   Future<void> _initializeWebSocket() async {
     try {
-      _channel = WebSocketChannel.connect(Uri.parse(_webSocketUrl));
+      _channel = WebSocketChannel.connect(
+        Uri.parse(
+          "wss://6a087cec-06ac-4af3-89fa-e6e37f8ac222-dev.e1-us-east-azure.choreoapis.dev/websocket/websocket/v1.0",
+        ),
+      );
       _channel!.stream.listen(
         (message) => _handleWebSocketMessage(message),
         onError: (error) {
@@ -258,8 +457,8 @@ class _RideStartScreenState extends State<RideStartScreen> {
     if (_channel != null && _isWebSocketConnected) {
       final message = {
         'type': 'driver_connected',
-        'driver_id': rideData?['rides'][0]['driverId'] ?? 'unknown',
-        'ride_id': widget.rideId,
+        'driver_id': widget.ride.driverId,
+        'ride_id': widget.ride.rideId,
         'timestamp': DateTime.now().toIso8601String(),
       };
       _channel!.sink.add(jsonEncode(message));
@@ -267,11 +466,12 @@ class _RideStartScreenState extends State<RideStartScreen> {
   }
 
   void _startHeartbeat() {
+    _heartbeatTimer?.cancel();
     _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (_channel != null && _isWebSocketConnected) {
         final heartbeat = {
           'type': 'heartbeat',
-          'driver_id': rideData?['rides'][0]['driverId'] ?? 'unknown',
+          'driver_id': widget.ride.driverId,
           'timestamp': DateTime.now().toIso8601String(),
         };
         try {
@@ -290,11 +490,6 @@ class _RideStartScreenState extends State<RideStartScreen> {
       switch (data['type']) {
         case 'location_received':
           break;
-        case 'ride_update':
-          setState(() => rideData = data['ride_data']);
-          break;
-        default:
-          debugPrint('Unknown message type: ${data['type']}');
       }
     } catch (e) {
       debugPrint('Error handling WebSocket message: $e');
@@ -305,14 +500,14 @@ class _RideStartScreenState extends State<RideStartScreen> {
     if (_channel != null && _isWebSocketConnected) {
       final locationData = {
         'type': 'location_update',
-        'driver_id': rideData?['rides'][0]['driverId'] ?? 'unknown',
-        'ride_id': widget.rideId,
+        'driver_id': widget.ride.driverId,
+        'ride_id': widget.ride.rideId,
         'latitude': location.latitude,
         'longitude': location.longitude,
         'speed': speed ?? 0.0,
-        'heading': heading ?? markerRotation.toDouble(),
+        'heading': heading ?? 0.0,
         'timestamp': DateTime.now().toIso8601String(),
-        'accuracy': currentPositionOfUser?.accuracy ?? 0.0,
+        'accuracy': currentPosition?.accuracy ?? 0.0,
       };
       try {
         _channel!.sink.add(jsonEncode(locationData));
@@ -335,12 +530,12 @@ class _RideStartScreenState extends State<RideStartScreen> {
       if (_channel != null) {
         final disconnectMessage = {
           'type': 'driver_disconnected',
-          'driver_id': rideData?['rides'][0]['driverId'] ?? 'unknown',
-          'ride_id': widget.rideId,
+          'driver_id': widget.ride.driverId,
+          'ride_id': widget.ride.rideId,
           'timestamp': DateTime.now().toIso8601String(),
         };
         _channel!.sink.add(jsonEncode(disconnectMessage));
-        _channel!.sink.close(status.goingAway);
+        _channel!.sink.close();
         _channel = null;
       }
       _isWebSocketConnected = false;
@@ -350,574 +545,255 @@ class _RideStartScreenState extends State<RideStartScreen> {
     }
   }
 
-  Future<void> _createCarMarkerIcon() async {
-    try {
-      final Uint8List markerIcon = await _getBytesFromAsset('assets/car_icon.png', 80);
-      setState(() {
-        carIcon = BitmapDescriptor.fromBytes(markerIcon);
-      });
-    } catch (e) {
-      debugPrint('Error creating car icon: $e');
-      carIcon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
-    }
-  }
-
-  Future<Uint8List> _getBytesFromAsset(String path, int width) async {
-    ByteData data = await rootBundle.load(path);
-    ui.Codec codec = await ui.instantiateImageCodec(
-      data.buffer.asUint8List(),
-      targetWidth: width,
-    );
-    ui.FrameInfo fi = await codec.getNextFrame();
-    return (await fi.image.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List();
-  }
-
-  void startLocationUpdates() {
-    locationUpdateTimer?.cancel();
-    locationUpdateTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      _updateDriverLocation();
-    });
-  }
-
-  Future<void> _updateDriverLocation() async {
-    try {
-      Position currentPosition = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-      LatLng newLocation = LatLng(currentPosition.latitude, currentPosition.longitude);
-
-      if (previousPosition != null) {
-        markerRotation = _calculateRotation(previousPosition!, newLocation);
-      }
-
-      _updateVehicleMarker(newLocation);
-      _sendLocationUpdate(
-        newLocation,
-        speed: currentPosition.speed,
-        heading: markerRotation.toDouble(),
-      );
-      previousPosition = newLocation;
-      _checkProximityToWaypoints(newLocation);
-    } catch (e) {
-      debugPrint('Error updating location: $e');
-    }
-  }
-
-  void _updateVehicleMarker(LatLng newLocation) {
-    if (carIcon != null) {
-      setState(() {
-        vehicleMarker = Marker(
-          markerId: const MarkerId('vehicle'),
-          position: newLocation,
-          icon: carIcon!,
-          rotation: markerRotation.toDouble(),
-          anchor: const Offset(0.5, 0.5),
-          flat: true,
-          zIndex: 2,
-        );
-        markersSet.removeWhere((marker) => marker.markerId.value == 'vehicle');
-        markersSet.add(vehicleMarker!);
-      });
-      _followVehicle(newLocation);
-    }
-  }
-
-  int _calculateRotation(LatLng previous, LatLng current) {
-    double deltaLng = current.longitude - previous.longitude;
-    double deltaLat = current.latitude - previous.latitude;
-    double rotation = atan2(deltaLng, deltaLat) * 180 / pi;
-    return rotation.round();
-  }
-
-  void _followVehicle(LatLng position) {
-    if (controllerGoogleMap != null) {
-      controllerGoogleMap!.animateCamera(CameraUpdate.newLatLng(position));
-    }
-  }
-
-  void _checkProximityToWaypoints(LatLng driverLocation) {
-    if (rideData == null || rideEnded) return;
-
-    final passengers = rideData!['rides'][0]['passengers'] as List;
-    if (currentWaypointIndex >= passengers.length) {
-      final endLocation = LatLng(
-        double.parse(rideData!['rides'][0]['route']['polyline'].last['latitude']),
-        double.parse(rideData!['rides'][0]['route']['polyline'].last['longitude']),
-      );
-      double distanceToEnd = Geolocator.distanceBetween(
-        driverLocation.latitude,
-        driverLocation.longitude,
-        endLocation.latitude,
-        endLocation.longitude,
-      );
-      if (distanceToEnd <= arrivalThresholdMeters && !showPickupDialog) {
-        setState(() {
-          showPickupDialog = true;
-          rideEnded = true;
-        });
-        _showRideEndDialog();
-      }
-      return;
-    }
-
-    final waypointAddress = passengers[currentWaypointIndex]['waypoint'];
-    _geocodeAddress(waypointAddress).then((waypointLocation) {
-      if (waypointLocation != null) {
-        double distanceToWaypoint = Geolocator.distanceBetween(
-          driverLocation.latitude,
-          driverLocation.longitude,
-          waypointLocation.latitude,
-          waypointLocation.longitude,
-        );
-        if (distanceToWaypoint <= arrivalThresholdMeters && !showPickupDialog) {
-          setState(() => showPickupDialog = true);
-          _showPickupDialog();
-        }
-      }
-    });
-  }
-
-  void _showPickupDialog() async {
-    final passengers = rideData!['rides'][0]['passengers'] as List;
-    final passenger = passengers[currentWaypointIndex];
-    final passengerDetails = await _fetchPassengerDetails(passenger['passengerId']);
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'You arrived at pickup location',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: const Icon(Icons.close),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Passenger Details',
-                  style: TextStyle(color: Colors.black54, fontSize: 14),
-                ),
-                const SizedBox(height: 15),
-                CircleAvatar(
-                  radius: 40,
-                  backgroundColor: Colors.grey[200],
-                  backgroundImage: NetworkImage(
-                    passengerDetails?['imageUrl'] ?? 'https://via.placeholder.com/150',
-                  ),
-                ),
-                const SizedBox(height: 15),
-                Text(
-                  passengerDetails?['name'] ?? passenger['waypoint'],
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.phone, color: Colors.black),
-                        onPressed: () {
-                          // Implement call functionality
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () async {
-                    Navigator.of(context).pop();
-                    setState(() {
-                      showPickupDialog = false;
-                      currentWaypointIndex++;
-                    });
-                    await _drawRouteToNextWaypoint(
-                      LatLng(currentPositionOfUser!.latitude, currentPositionOfUser!.longitude),
-                    );
-                  },
-                  child: const Text(
-                    'Confirm Pickup',
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showRideEndDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Ride Completed',
-                  style: TextStyle(
-                    color: Colors.green,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).pushReplacementNamed('/main');
-                  },
-                  child: const Text(
-                    'End Ride',
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _checkLocationPermission() async {
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        _showError('Location permissions are denied');
-        return;
-      }
-    }
-    if (permission == LocationPermission.deniedForever) {
-      _showError('Location permissions are permanently denied');
-      return;
-    }
-    startLocationUpdates();
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  Future<void> getCurrentLiveLocationOfUser() async {
-    try {
-      Position positionOfUser = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-      currentPositionOfUser = positionOfUser;
-      LatLng positionOfUserInLatLan = LatLng(
-        currentPositionOfUser!.latitude,
-        currentPositionOfUser!.longitude,
-      );
-
-      previousPosition = positionOfUserInLatLan;
-      _updateVehicleMarker(positionOfUserInLatLan);
-
-      CameraPosition cameraPosition = CameraPosition(
-        target: positionOfUserInLatLan,
-        zoom: 15,
-      );
-      await controllerGoogleMap?.animateCamera(CameraUpdate.newCameraPosition(cameraPosition));
-    } catch (e) {
-      _showError('Error getting location: $e');
-    }
-  }
-
-  Future<void> getDirectionsWithWaypoints(LatLng origin, List<LatLng> waypoints, LatLng destination) async {
-    try {
-      String waypointsString = waypoints.isNotEmpty
-          ? "&waypoints=${waypoints.map((w) => "${w.latitude},${w.longitude}").join("|")}"
-          : "";
-      String url =
-          "https://maps.googleapis.com/maps/api/directions/json?"
-          "origin=${origin.latitude},${origin.longitude}"
-          "&destination=${destination.latitude},${destination.longitude}"
-          "$waypointsString"
-          "&key=$googleAPIKey"
-          "&mode=driving";
-
-      var response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        var decodedData = jsonDecode(response.body);
-        if (decodedData["status"] == "OK") {
-          _decodePoints(decodedData);
-        } else {
-          debugPrint("Directions API error: ${decodedData["status"]}");
-          drawSimplePolyline(origin, destination, waypoints);
-        }
-      } else {
-        debugPrint("Failed to get directions: ${response.statusCode}");
-        drawSimplePolyline(origin, destination, waypoints);
-      }
-    } catch (e) {
-      debugPrint("Error getting directions: $e");
-      drawSimplePolyline(origin, destination, waypoints);
-    }
-  }
-
-  void _decodePoints(Map<String, dynamic> directionDetails) {
-    polylineCoordinates.clear();
-    if (directionDetails["routes"].isEmpty) return;
-
-    List<dynamic> routes = directionDetails["routes"];
-    Map<String, dynamic> route = routes[0];
-    List<dynamic> legs = route["legs"];
-
-    for (var leg in legs) {
-      List<dynamic> steps = leg["steps"];
-      for (var step in steps) {
-        String polyline = step["polyline"]["points"];
-        List<LatLng> decodedPolylinePoints = _decodePolyline(polyline);
-        polylineCoordinates.addAll(decodedPolylinePoints);
-      }
-    }
-    _createPolyline();
-  }
-
-  List<LatLng> _decodePolyline(String encoded) {
-    List<LatLng> poly = [];
-    int index = 0, len = encoded.length;
-    int lat = 0, lng = 0;
-
-    while (index < len) {
-      int b, shift = 0, result = 0;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-      lat += dlat;
-
-      shift = 0;
-      result = 0;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-      lng += dlng;
-
-      double finalLat = lat / 1E5;
-      double finalLng = lng / 1E5;
-      poly.add(LatLng(finalLat, finalLng));
-    }
-    return poly;
-  }
-
-  void _createPolyline() {
-    polylineSet.clear();
-    Polyline polyline = Polyline(
-      polylineId: const PolylineId("route"),
-      color: Colors.blue,
-      points: polylineCoordinates,
-      width: 5,
-      jointType: JointType.round,
-    );
-    setState(() => polylineSet.add(polyline));
-  }
-
-  void drawSimplePolyline(LatLng origin, LatLng destination, List<LatLng> waypoints) {
-    polylineCoordinates.clear();
-    polylineSet.clear();
-    polylineCoordinates.add(origin);
-    polylineCoordinates.addAll(waypoints);
-    polylineCoordinates.add(destination);
-    _createPolyline();
-  }
-
-  void _addWaypointMarker(LatLng position, int index) {
-    Marker waypointMarker = Marker(
-      markerId: MarkerId("waypoint_$index"),
-      position: position,
-      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
-      infoWindow: InfoWindow(
-        title: "Passenger ${index + 1} Pickup",
-        snippet: rideData!['rides'][0]['passengers'][index]['waypoint'],
-      ),
-    );
-    setState(() => markersSet.add(waypointMarker));
-  }
-
-  void _addDestinationMarker(LatLng position) {
-    Marker dropOffMarker = Marker(
-      markerId: const MarkerId("dropoff"),
-      position: position,
-      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-      infoWindow: InfoWindow(
-        title: "Destination",
-        snippet: rideData!['rides'][0]['endLocation'],
-      ),
-    );
-    setState(() => markersSet.add(dropOffMarker));
-  }
-
-  Future<void> updateMapTheme(GoogleMapController controller) async {
-    try {
-      String styleJson = await getJsonFileFromThemes('themes/map_style.json');
-      await controller.setMapStyle(styleJson);
-    } catch (e) {
-      debugPrint('Error setting map style: $e');
-    }
-  }
-
-  Future<String> getJsonFileFromThemes(String path) async {
-    return await rootBundle.loadString(path);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: Container(
+          margin: const EdgeInsets.only(left: 8.0),
+          decoration: const BoxDecoration(
+            color: mainButtonColor,
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+      ),
       body: Stack(
         children: [
-          if (isLoading)
-            const Center(child: CircularProgressIndicator())
-          else
-            GoogleMap(
-              mapType: MapType.normal,
-              myLocationEnabled: true,
-              zoomControlsEnabled: false,
-              myLocationButtonEnabled: false,
-              initialCameraPosition: _initialCameraPosition,
-              markers: markersSet,
-              polylines: polylineSet,
-              onMapCreated: (GoogleMapController controller) {
-                googleMapCompleterController.complete(controller);
-                controllerGoogleMap = controller;
-                updateMapTheme(controller);
-                getCurrentLiveLocationOfUser();
-              },
-            ),
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : GoogleMap(
+                onMapCreated: (controller) {
+                  mapController = controller;
+                  updateMapTheme(controller);
+                },
+                initialCameraPosition: CameraPosition(
+                  target:
+                      currentPosition != null
+                          ? LatLng(
+                            currentPosition!.latitude,
+                            currentPosition!.longitude,
+                          )
+                          : widget.ride.route.polyline.first,
+                  zoom: 12,
+                ),
+                markers: markers,
+                polylines: polylines,
+                myLocationEnabled: true,
+              ),
           Positioned(
-            top: 50,
-            left: 20,
+            bottom: nextPassenger != null ? 90 : 20,
+            left: 16,
+            right: 16,
             child: Container(
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
+                // Modern gradient background
+                gradient: LinearGradient(
+                  colors: [Colors.grey[900]!, Colors.black87],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                    spreadRadius: 0,
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
                     blurRadius: 6,
-                    offset: const Offset(0, 3),
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                onPressed: () => Navigator.of(context).pushReplacementNamed('/main'),
+              child: Row(
+                children: [
+                  // Left side - Main content
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Destination with icon
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.location_on,
+                              color: Colors.blue[400],
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                nextPassenger != null
+                                    ? 'To: ${waypointAddresses[nextPassenger!.passengerId] ?? nextPassenger!.address}'
+                                    : 'To: ${widget.ride.dropoffLocation}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        // Passenger info
+                        if (passengerName != null) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.person,
+                                color: Colors.green[400],
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Passenger: $passengerName',
+                                  style: TextStyle(
+                                    color: Colors.grey[300],
+                                    fontSize: 14,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+
+                        const SizedBox(height: 12),
+
+                        // Trip details in a more organized way
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.grey[700]!,
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              _buildInfoRow(
+                                Icons.straighten,
+                                'Distance',
+                                distanceText ?? "Calculating...",
+                                Colors.orange[400]!,
+                              ),
+                              const SizedBox(height: 8),
+                              _buildInfoRow(
+                                Icons.schedule,
+                                'Duration',
+                                durationText ?? "Calculating...",
+                                Colors.purple[400]!,
+                              ),
+                              const SizedBox(height: 8),
+                              _buildInfoRow(
+                                Icons.access_time,
+                                'ETA',
+                                etaText ?? "Calculating...",
+                                Colors.blue[400]!,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Right side - Call button
+                  if (nextPassenger != null) ...[
+                    const SizedBox(width: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.green[600],
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.green.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.call, color: Colors.white),
+                        onPressed: () {
+                          // Add your call functionality here
+                          // For now, it's null as in your original code
+                        },
+                        tooltip: 'Call Passenger',
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
-          if (!isLoading && rideData != null)
+
+          // Enhanced pickup confirmation button
+          if (nextPassenger != null)
             Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
+              bottom: 20,
+              left: 16,
+              right: 16,
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(24),
-                    topRight: Radius.circular(24),
-                  ),
+                  borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      spreadRadius: 1,
-                      blurRadius: 10,
-                      offset: const Offset(0, -4),
+                      color: Colors.blue.withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Arriving in ${rideData!['rides'][0]['route']['duration']}',
-                            style: const TextStyle(color: Colors.black54, fontSize: 14),
-                          ),
-                          Text(
-                            rideData!['rides'][0]['time'],
-                            style: const TextStyle(
-                              color: Colors.black,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
+                child: ElevatedButton(
+                  onPressed: () => _confirmPassengerPickup(nextPassenger!),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[600],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Column(
-                        children: [
-                          LocationRow(
-                            icon: Icons.my_location,
-                            location: rideData!['rides'][0]['startLocation'],
-                            color: Colors.black,
+                    elevation: 0,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.check_circle, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Confirm Pickup: ${passengerName}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
-                          const SizedBox(height: 12),
-                          LocationRow(
-                            icon: Icons.location_on,
-                            location: currentWaypointIndex < (rideData!['rides'][0]['passengers'] as List).length
-                                ? rideData!['rides'][0]['passengers'][currentWaypointIndex]['waypoint']
-                                : rideData!['rides'][0]['endLocation'],
-                            color: Colors.deepOrange,
-                          ),
-                        ],
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -925,4 +801,37 @@ class _RideStartScreenState extends State<RideStartScreen> {
       ),
     );
   }
+}
+
+Widget _buildInfoRow(IconData icon, String label, String value, Color iconColor) {
+  return Row(
+    children: [
+      Icon(
+        icon,
+        color: iconColor,
+        size: 16,
+      ),
+      const SizedBox(width: 8),
+      Text(
+        '$label: ',
+        style: TextStyle(
+          color: Colors.grey[400],
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      Expanded(
+        child: Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    ],
+  );
 }

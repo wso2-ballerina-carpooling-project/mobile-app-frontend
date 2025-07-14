@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geocoding/geocoding.dart';
+
 
 class RideMapScreen extends StatefulWidget {
   final Map<String, dynamic> ride;
-  final String waypoint;
+  final LatLng? waypoint; // Nullable LatLng
 
-  const RideMapScreen({
-    Key? key,
-    required this.ride,
-    required this.waypoint,
-  }) : super(key: key);
+  const RideMapScreen({Key? key, required this.ride, required this.waypoint})
+      : super(key: key);
 
   @override
   State<RideMapScreen> createState() => _RideMapScreenState();
@@ -26,42 +24,62 @@ class _RideMapScreenState extends State<RideMapScreen> {
     super.initState();
     _initializeMap();
   }
+    Future<void> updateMapTheme(GoogleMapController controller) async {
+    try {
+      String styleJson = await getJsonFileFromThemes('themes/map_style.json');
+      await controller.setMapStyle(styleJson);
+    } catch (e) {
+      debugPrint('Error setting map style: $e');
+    }
+  }
+
+  Future<String> getJsonFileFromThemes(String path) async {
+    return await rootBundle.loadString(path);
+  }
 
   Future<void> _initializeMap() async {
     try {
-      // Get pickup location coordinates
-      List<Location> locations = await locationFromAddress(widget.waypoint);
-      if (locations.isEmpty) {
-        print('Could not geocode pickup address: ${widget.waypoint}');
+      // Check if waypoint is null
+      if (widget.waypoint == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Waypoint location is not available.')),
+        );
         return;
       }
-      LatLng pickUpPoint = LatLng(locations[0].latitude, locations[0].longitude);
+
+      // Proceed only if waypoint is not null
+      final LatLng waypoint = widget.waypoint!; // Use non-null assertion since we checked
 
       // Create marker for pickup location
       setState(() {
         _markers.add(
           Marker(
             markerId: const MarkerId('pickup'),
-            position: pickUpPoint,
-            infoWindow: InfoWindow(title: 'Pickup: ${widget.waypoint}'),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            position: waypoint,
+            infoWindow: InfoWindow(title: 'Pickup: ${waypoint.latitude}, ${waypoint.longitude}'),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueRed,
+            ),
           ),
         );
       });
 
       // Extract polyline from ride
       List<dynamic> polylineData = widget.ride['route']['polyline'];
-      List<LatLng> polylinePoints = polylineData.map((point) {
-        try {
-          return LatLng(
-            double.parse(point['latitude'].toString()),
-            double.parse(point['longitude'].toString()),
-          );
-        } catch (e) {
-          print('Error parsing polyline point: $point, error: $e');
-          return LatLng(0, 0);
-        }
-      }).where((point) => point.latitude != 0 && point.longitude != 0).toList();
+      List<LatLng> polylinePoints = polylineData
+          .map((point) {
+            try {
+              return LatLng(
+                double.parse(point['latitude'].toString()),
+                double.parse(point['longitude'].toString()),
+              );
+            } catch (e) {
+              print('Error parsing polyline point: $point, error: $e');
+              return LatLng(0, 0);
+            }
+          })
+          .where((point) => point.latitude != 0 && point.longitude != 0)
+          .toList();
 
       if (polylinePoints.isNotEmpty) {
         setState(() {
@@ -76,16 +94,15 @@ class _RideMapScreenState extends State<RideMapScreen> {
         });
 
         // Adjust camera to fit polyline and pickup marker
-        LatLngBounds bounds = _calculateBounds([...polylinePoints, pickUpPoint]);
-        _mapController?.animateCamera(
-          CameraUpdate.newLatLngBounds(bounds, 50),
-        );
+        LatLngBounds bounds = _calculateBounds([
+          ...polylinePoints,
+          waypoint, // Use the non-null waypoint
+        ]);
+        _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
       }
     } catch (e) {
       print('Error initializing map: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading map: $e')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading map: $e')));
     }
   }
 
@@ -119,10 +136,7 @@ class _RideMapScreenState extends State<RideMapScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF0A0E2A),
-        title: Text(
-          'Ride Route: ${widget.ride['startLocation']}',
-          style: const TextStyle(color: Colors.white),
-        ),
+        title: const Text('Ride Route', style: TextStyle(color: Colors.white)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
@@ -139,6 +153,7 @@ class _RideMapScreenState extends State<RideMapScreen> {
         polylines: _polylines,
         onMapCreated: (GoogleMapController controller) {
           _mapController = controller;
+           updateMapTheme(controller);
           // Trigger camera adjustment after map is created
           _initializeMap();
         },

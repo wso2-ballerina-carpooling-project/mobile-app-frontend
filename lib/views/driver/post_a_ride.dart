@@ -7,7 +7,6 @@ import 'package:mobile_frontend/services/ride_services.dart';
 import 'package:mobile_frontend/views/common/select_location.dart';
 import 'package:mobile_frontend/widgets/custom_input_field.dart';
 import 'package:mobile_frontend/widgets/custom_button.dart';
-import 'package:mobile_frontend/widgets/dropdown_input.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -22,19 +21,14 @@ class RidePostScreen extends StatefulWidget {
 }
 
 class _RidePostScreenState extends State<RidePostScreen> {
-  String? selectedTime;
-  String? selectedReturnTime;
-  bool isVehicleRegEditable = false;
-  final TextEditingController pickUpController = TextEditingController();
-  final TextEditingController dropOffController = TextEditingController();
+  bool isWSO2Start = true;
+  final TextEditingController locationController = TextEditingController();
   final TextEditingController dateController = TextEditingController();
-  final TextEditingController vehicleRegController = TextEditingController();
+  final TextEditingController timeController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final _storage = const FlutterSecureStorage();
   bool _isPosting = false;
-  bool isPickUpLocked = false;
-  bool isDropOffLocked = false;
-  bool isWSO2Start = false;
+  bool isLocationLocked = false;
 
   // Google Maps Controller
   GoogleMapController? mapController;
@@ -55,8 +49,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
   List<String> routeDurations = [];
   List<String> routeDistances = [];
 
-  String? pickUpPlaceId;
-  String? dropOffPlaceId;
+  String? locationPlaceId;
 
   // WSO2 specific variables
   final String wso2Address = "WSO2, Bauddhaloka Mawatha, Colombo, Sri Lanka";
@@ -70,11 +63,8 @@ class _RidePostScreenState extends State<RidePostScreen> {
 
   Future<void> _determinePosition() async {
     setState(() {
-      pickUpController.text = "";
-      dropOffController.text = "";
-      isWSO2Start = true;
-      isPickUpLocked = false;
-      isDropOffLocked = false;
+      locationController.text = "";
+      isLocationLocked = false;
     });
   }
 
@@ -87,7 +77,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
         return address;
       }
     } catch (e) {
-      print('Error getting address: $e');
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error getting address: $e')));
@@ -95,16 +84,15 @@ class _RidePostScreenState extends State<RidePostScreen> {
     return null;
   }
 
-  Future<void> _selectLocation(bool isPickup) async {
+  Future<void> _selectLocation() async {
     final LatLng? selectedLocation = await Navigator.push(
       context,
       MaterialPageRoute(
         builder:
             (context) => SelectLocation(
-              initialLocation:
-                  isPickup
-                      ? _selectedLocationFromLatLng(pickUpController.text)
-                      : _selectedLocationFromLatLng(dropOffController.text),
+              initialLocation: _selectedLocationFromLatLng(
+                locationController.text,
+              ),
             ),
       ),
     );
@@ -115,38 +103,11 @@ class _RidePostScreenState extends State<RidePostScreen> {
         selectedLocation.longitude,
       );
       setState(() {
-        if (isPickup) {
-          pickUpController.text =
-              address ??
-              "Selected Location (${selectedLocation.latitude}, ${selectedLocation.longitude})";
-          pickUpPlaceId = null; // No place ID for map-selected location
-          isWSO2Start = pickUpController.text.toLowerCase().contains('wso2');
-          if (!isWSO2Start && dropOffController.text.isEmpty) {
-            dropOffController.text = wso2Address;
-            dropOffPlaceId = null;
-            isDropOffLocked = true;
-            isPickUpLocked = false;
-          } else {
-            isDropOffLocked = false;
-            isPickUpLocked = false;
-          }
-        } else {
-          dropOffController.text =
-              address ??
-              "Selected Location (${selectedLocation.latitude}, ${selectedLocation.longitude})";
-          dropOffPlaceId = null; // No place ID for map-selected location
-          if (!dropOffController.text.toLowerCase().contains('wso2') &&
-              pickUpController.text.isEmpty) {
-            pickUpController.text = wso2Address;
-            pickUpPlaceId = null;
-            isWSO2Start = true;
-            isPickUpLocked = true;
-            isDropOffLocked = false;
-          } else {
-            isPickUpLocked = false;
-            isDropOffLocked = false;
-          }
-        }
+        locationController.text =
+            address ??
+            "Selected Location (${selectedLocation.latitude}, ${selectedLocation.longitude})";
+        locationPlaceId = null;
+        isLocationLocked = false;
       });
       await _showRoutes();
     }
@@ -156,7 +117,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
     if (address.toLowerCase() == wso2Address.toLowerCase()) {
       return wso2Coordinates;
     }
-    return null; // Default to initial map position if not WSO2
+    return null;
   }
 
   Future<void> _showRoutes() async {
@@ -166,27 +127,33 @@ class _RidePostScreenState extends State<RidePostScreen> {
     });
 
     try {
-      LatLng originLatLng =
-          _selectedLocationFromLatLng(pickUpController.text) ?? wso2Coordinates;
-      LatLng destLatLng =
-          _selectedLocationFromLatLng(dropOffController.text) ??
-          wso2Coordinates;
+      LatLng originLatLng = wso2Coordinates; // Default to WSO2
+      LatLng destLatLng = wso2Coordinates; // Default to WSO2
 
-      if (pickUpController.text != wso2Address) {
+      // If location is not WSO2, get coordinates from address
+      if (locationController.text.isNotEmpty &&
+          locationController.text.toLowerCase() != wso2Address.toLowerCase()) {
         List<Location> locations = await locationFromAddress(
-          "${pickUpController.text}, Sri Lanka",
+          "${locationController.text}, Sri Lanka",
         );
         if (locations.isNotEmpty) {
-          originLatLng = LatLng(locations[0].latitude, locations[0].longitude);
+          LatLng userLocation = LatLng(
+            locations[0].latitude,
+            locations[0].longitude,
+          );
+          if (isWSO2Start) {
+            destLatLng = userLocation;
+          } else {
+            originLatLng = userLocation;
+          }
+        } else {
+          throw Exception(
+            'Could not find coordinates for the provided location',
+          );
         }
-      }
-      if (dropOffController.text != wso2Address) {
-        List<Location> locations = await locationFromAddress(
-          "${dropOffController.text}, Sri Lanka",
-        );
-        if (locations.isNotEmpty) {
-          destLatLng = LatLng(locations[0].latitude, locations[0].longitude);
-        }
+      } else {
+        // If location is WSO2 or empty, use WSO2 coordinates for both (though this should be validated)
+        throw Exception('Please provide a valid non-WSO2 location');
       }
 
       LatLngBounds bounds = LatLngBounds(
@@ -220,7 +187,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
             ),
             infoWindow: InfoWindow(
               title: 'Pickup',
-              snippet: pickUpController.text,
+              snippet: isWSO2Start ? wso2Address : locationController.text,
             ),
           ),
           Marker(
@@ -231,7 +198,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
             ),
             infoWindow: InfoWindow(
               title: 'Drop-off',
-              snippet: dropOffController.text,
+              snippet: isWSO2Start ? locationController.text : wso2Address,
             ),
           ),
         };
@@ -239,10 +206,9 @@ class _RidePostScreenState extends State<RidePostScreen> {
         mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
       });
     } catch (e) {
-      print('Error showing routes: $e');
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Error displaying routes')));
+      ).showSnackBar(SnackBar(content: Text('Error displaying routes: $e')));
     } finally {
       setState(() {
         isLoading = false;
@@ -317,7 +283,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
         throw Exception('Failed to fetch directions');
       }
     } catch (e) {
-      print('Error getting directions: $e');
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error getting directions: $e')));
@@ -340,14 +305,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
         );
       }
     });
-  }
-
-  List<String> _getTimeOptions() {
-    if (isWSO2Start) {
-      return ['17:00:00', '18:00:00', '19:00:00'];
-    } else {
-      return ['08:00:00', '09:00:00', '10:00:00'];
-    }
   }
 
   Future<List<Map<String, dynamic>>> searchSriLankaPlaces(String query) async {
@@ -406,7 +363,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
         if (data['status'] == 'OK') {
           final location = data['result']['geometry']['location'];
           return LatLng(location['lat'], location['lng']);
@@ -414,7 +370,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
       }
       return null;
     } catch (e) {
-      print('Error getting place details: $e');
       return null;
     }
   }
@@ -433,7 +388,6 @@ class _RidePostScreenState extends State<RidePostScreen> {
   }
 
   Future<void> _postRide() async {
-    // Validate all required fields
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all required fields')),
@@ -441,17 +395,10 @@ class _RidePostScreenState extends State<RidePostScreen> {
       return;
     }
 
-    // Additional checks for required fields
-    if (pickUpController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a starting point')),
-      );
-      return;
-    }
-    if (dropOffController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a destination')),
-      );
+    if (locationController.text.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a location')));
       return;
     }
     if (dateController.text.isEmpty) {
@@ -460,20 +407,13 @@ class _RidePostScreenState extends State<RidePostScreen> {
       ).showSnackBar(const SnackBar(content: Text('Please select a date')));
       return;
     }
-    if (selectedTime == null || selectedTime!.isEmpty) {
+    if (timeController.text.isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Please select a time')));
       return;
     }
-    if (routeOptions.isEmpty || selectedRouteIndex >= routeOptions.length) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a valid route')),
-      );
-      return;
-    }
 
-    // Validate ride time (must be at least 12 hours in the future)
     try {
       final List<String> dateParts = dateController.text.split('/');
       if (dateParts.length != 3) {
@@ -482,22 +422,14 @@ class _RidePostScreenState extends State<RidePostScreen> {
       final int day = int.parse(dateParts[0]);
       final int month = int.parse(dateParts[1]);
       final int year = int.parse(dateParts[2]);
-      final List<String> timeParts = (selectedTime ?? '').split(':');
-      if (timeParts.length != 3) {
+      final List<String> timeParts = timeController.text.split(':');
+      if (timeParts.length != 2) {
         throw Exception('Invalid time format');
       }
       final int hour = int.parse(timeParts[0]);
       final int minute = int.parse(timeParts[1]);
-      final int second = int.parse(timeParts[2]);
 
-      final DateTime rideDateTime = DateTime(
-        year,
-        month,
-        day,
-        hour,
-        minute,
-        second,
-      );
+      final DateTime rideDateTime = DateTime(year, month, day, hour, minute);
       final DateTime now = DateTime.now();
       final DateTime earliestAllowedTime = now.add(const Duration(hours: 12));
 
@@ -642,10 +574,7 @@ class _RidePostScreenState extends State<RidePostScreen> {
         if (token == null) {
           throw Exception('No authentication token found');
         }
-        bool waytowork = true;
-        if (pickUpController.text == wso2Address) {
-          waytowork = false;
-        }
+
         final routeData =
             selectedRouteIndex < routeOptions.length
                 ? {
@@ -665,17 +594,16 @@ class _RidePostScreenState extends State<RidePostScreen> {
                 : null;
 
         final rideData = {
-          'startLocation': pickUpController.text,
-          'endLocation': dropOffController.text,
-          'waytowork': waytowork,
+          'startLocation': isWSO2Start ? wso2Address : locationController.text,
+          'endLocation': isWSO2Start ? locationController.text : wso2Address,
+          'waytowork': !isWSO2Start,
           'date': dateController.text,
-          'time': selectedTime ?? '',
+          'time': timeController.text,
           'route': routeData,
         };
 
         final response = await RideService.postRide(rideData, token);
 
-        print(response.body);
         setState(() {
           _isPosting = false;
         });
@@ -715,8 +643,8 @@ class _RidePostScreenState extends State<RidePostScreen> {
                         ),
                       ),
                       onPressed: () {
-                        Navigator.of(context).pop(); // Close AlertDialog
-                        Navigator.pop(context); // Navigate back
+                        Navigator.of(context).pop();
+                        Navigator.pop(context);
                       },
                       child: const Text(
                         'Back',
@@ -763,8 +691,8 @@ class _RidePostScreenState extends State<RidePostScreen> {
                         ),
                       ),
                       onPressed: () {
-                        Navigator.of(context).pop(); // Close dialog
-                        _postRide(); // Retry logic
+                        Navigator.of(context).pop();
+                        _postRide();
                       },
                       child: const Text(
                         'Post Again',
@@ -803,10 +731,9 @@ class _RidePostScreenState extends State<RidePostScreen> {
 
   @override
   void dispose() {
-    pickUpController.dispose();
-    dropOffController.dispose();
+    locationController.dispose();
     dateController.dispose();
-    vehicleRegController.dispose();
+    timeController.dispose();
     mapController?.dispose();
     super.dispose();
   }
@@ -929,141 +856,105 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                       ),
                                       const SizedBox(width: 8),
                                       Expanded(
-                                        child:
-                                            isPickUpLocked
-                                                ? TextFormField(
-                                                  controller: pickUpController,
-                                                  decoration:
-                                                      const InputDecoration(
-                                                        labelText:
-                                                            'Starting-Point',
-                                                        hintText:
-                                                            'Your Location',
-                                                        border:
-                                                            OutlineInputBorder(),
-                                                        contentPadding:
-                                                            EdgeInsets.symmetric(
-                                                              horizontal: 20,
-                                                              vertical: 15,
-                                                            ),
-                                                        suffixIcon: Icon(
-                                                          Icons.lock,
-                                                        ),
-                                                      ),
-                                                  readOnly: true,
-                                                  validator: (value) {
-                                                    if (value == null ||
-                                                        value.isEmpty) {
-                                                      return 'Please enter a starting point';
-                                                    }
-                                                    return null;
-                                                  },
-                                                )
-                                                : TypeAheadField<
-                                                  Map<String, dynamic>
-                                                >(
-                                                  textFieldConfiguration: TextFieldConfiguration(
-                                                    controller:
-                                                        pickUpController,
-                                                    decoration: InputDecoration(
-                                                      labelText:
-                                                          'Starting-Point',
-                                                      hintText:
-                                                          'Search or tap map icon',
-                                                      border:
-                                                          const OutlineInputBorder(),
-                                                      contentPadding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 20,
-                                                            vertical: 15,
-                                                          ),
-                                                      suffixIcon: IconButton(
-                                                        icon: const Icon(
-                                                          Icons
-                                                              .location_on_sharp,
-                                                        ),
-                                                        onPressed:
-                                                            () =>
-                                                                _selectLocation(
-                                                                  true,
-                                                                ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  suggestionsCallback: (
-                                                    pattern,
-                                                  ) async {
-                                                    if (pattern.length >= 3) {
-                                                      return await searchSriLankaPlaces(
-                                                        pattern,
-                                                      );
-                                                    }
-                                                    return [];
-                                                  },
-                                                  itemBuilder: (
-                                                    context,
-                                                    suggestion,
-                                                  ) {
-                                                    return ListTile(
-                                                      leading: const Icon(
-                                                        Icons.location_on,
-                                                      ),
-                                                      title: Text(
-                                                        suggestion['description'],
-                                                      ),
-                                                      subtitle: const Text(
-                                                        'Sri Lanka',
-                                                      ),
-                                                    );
-                                                  },
-                                                  onSuggestionSelected: (
-                                                    suggestion,
-                                                  ) {
-                                                    setState(() {
-                                                      pickUpController.text =
-                                                          suggestion['description'];
-                                                      pickUpPlaceId =
-                                                          suggestion['place_id'];
-                                                      isWSO2Start =
-                                                          suggestion['description']
-                                                              .toLowerCase()
-                                                              .contains('wso2');
-                                                      if (!isWSO2Start) {
-                                                        dropOffController.text =
-                                                            wso2Address;
-                                                        dropOffPlaceId = null;
-                                                      }
-                                                    });
-                                                  },
-                                                  noItemsFoundBuilder:
-                                                      (
-                                                        context,
-                                                      ) => const Padding(
-                                                        padding: EdgeInsets.all(
-                                                          8.0,
-                                                        ),
-                                                        child: Text(
-                                                          'No locations found',
-                                                        ),
-                                                      ),
-                                                  suggestionsBoxDecoration:
-                                                      SuggestionsBoxDecoration(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              8,
-                                                            ),
-                                                        elevation: 4,
-                                                        color: Colors.white,
-                                                        constraints:
-                                                            const BoxConstraints(
-                                                              maxHeight: 200,
-                                                            ),
-                                                      ),
-                                                  debounceDuration:
-                                                      const Duration(
-                                                        milliseconds: 300,
-                                                      ),
+                                        child: DropdownButtonFormField<String>(
+                                          value:
+                                              isWSO2Start
+                                                  ? 'From WSO2'
+                                                  : 'To WSO2',
+                                          isExpanded: true,
+                                          decoration: InputDecoration(
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 12,
                                                 ),
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              borderSide: BorderSide(
+                                                color: Colors.grey.shade300,
+                                                width: 1,
+                                              ),
+                                            ),
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              borderSide: BorderSide(
+                                                color: Colors.grey.shade300,
+                                                width: 1,
+                                              ),
+                                            ),
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              borderSide: BorderSide(
+                                                color: mainButtonColor,
+                                                width: 2,
+                                              ),
+                                            ),
+                                            filled: true,
+                                            fillColor: Colors.grey.shade50,
+                                            labelText: 'Direction',
+                                            labelStyle: TextStyle(
+                                              color: Colors.black54,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                          dropdownColor: Colors.white,
+                                          style: const TextStyle(
+                                            color: Colors.black87,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          icon: Icon(
+                                            Icons.arrow_drop_down,
+                                            color: mainButtonColor,
+                                            size: 24,
+                                          ),
+                                          items: [
+                                            DropdownMenuItem(
+                                              value: 'From WSO2',
+                                              child: Text(
+                                                'From WSO2',
+                                                style: TextStyle(
+                                                  color: Colors.black87,
+                                                  fontSize: 16,
+                                                  fontWeight:
+                                                      isWSO2Start
+                                                          ? FontWeight.bold
+                                                          : FontWeight.normal,
+                                                ),
+                                              ),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'To WSO2',
+                                              child: Text(
+                                                'To WSO2',
+                                                style: TextStyle(
+                                                  color: Colors.black87,
+                                                  fontSize: 16,
+                                                  fontWeight:
+                                                      !isWSO2Start
+                                                          ? FontWeight.bold
+                                                          : FontWeight.normal,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                          onChanged: (value) {
+                                            setState(() {
+                                              isWSO2Start =
+                                                  value == 'From WSO2';
+                                              locationController.text = "";
+                                              isMapVisible = false;
+                                              markers.clear();
+                                              polylines.clear();
+                                              routeOptions.clear();
+                                              routeDurations.clear();
+                                              routeDistances.clear();
+                                            });
+                                          },
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -1071,153 +962,89 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                   Row(
                                     children: [
                                       const Icon(
-                                        Icons.location_on_outlined,
+                                        Icons.location_on,
                                         color: Color(0x9C002B5B),
                                         size: 20,
                                       ),
                                       const SizedBox(width: 8),
                                       Expanded(
-                                        child:
-                                            isWSO2Start
-                                                ? TypeAheadField<
-                                                  Map<String, dynamic>
-                                                >(
-                                                  textFieldConfiguration: TextFieldConfiguration(
-                                                    controller:
-                                                        dropOffController,
-                                                    decoration: InputDecoration(
-                                                      labelText: 'End-Point',
-                                                      hintText:
-                                                          'Search or tap map icon',
-                                                      border:
-                                                          const OutlineInputBorder(),
-                                                      contentPadding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 20,
-                                                            vertical: 15,
-                                                          ),
-                                                      suffixIcon: IconButton(
-                                                        icon: const Icon(
-                                                          Icons
-                                                              .location_on_sharp,
-                                                        ),
-                                                        onPressed:
-                                                            () =>
-                                                                _selectLocation(
-                                                                  false,
-                                                                ),
+                                        child: TypeAheadField<
+                                          Map<String, dynamic>
+                                        >(
+                                          textFieldConfiguration:
+                                              TextFieldConfiguration(
+                                                controller: locationController,
+                                                decoration: InputDecoration(
+                                                  labelText:
+                                                      isWSO2Start
+                                                          ? 'Destination'
+                                                          : 'Starting Point',
+                                                  hintText:
+                                                      'Search or tap map icon',
+                                                  border:
+                                                      const OutlineInputBorder(),
+                                                  contentPadding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 20,
+                                                        vertical: 15,
                                                       ),
+                                                  suffixIcon: IconButton(
+                                                    icon: const Icon(
+                                                      Icons.location_on_sharp,
                                                     ),
+                                                    onPressed: _selectLocation,
                                                   ),
-                                                  suggestionsCallback: (
-                                                    pattern,
-                                                  ) async {
-                                                    if (pattern.length >= 3) {
-                                                      return await searchSriLankaPlaces(
-                                                        pattern,
-                                                      );
-                                                    }
-                                                    return [];
-                                                  },
-                                                  itemBuilder: (
-                                                    context,
-                                                    suggestion,
-                                                  ) {
-                                                    return ListTile(
-                                                      leading: const Icon(
-                                                        Icons.location_on,
-                                                      ),
-                                                      title: Text(
-                                                        suggestion['description'],
-                                                      ),
-                                                      subtitle: const Text(
-                                                        'Sri Lanka',
-                                                      ),
-                                                    );
-                                                  },
-                                                  onSuggestionSelected: (
-                                                    suggestion,
-                                                  ) {
-                                                    setState(() {
-                                                      dropOffController.text =
-                                                          suggestion['description'];
-                                                      dropOffPlaceId =
-                                                          suggestion['place_id'];
-                                                      if (!suggestion['description']
-                                                              .toLowerCase()
-                                                              .contains(
-                                                                'wso2',
-                                                              ) &&
-                                                          pickUpController
-                                                              .text
-                                                              .isEmpty) {
-                                                        pickUpController.text =
-                                                            wso2Address;
-                                                        pickUpPlaceId = null;
-                                                        isWSO2Start = true;
-                                                        isPickUpLocked = true;
-                                                        isDropOffLocked = false;
-                                                      } else {
-                                                        isPickUpLocked = false;
-                                                        isDropOffLocked = false;
-                                                      }
-                                                    });
-                                                  },
-                                                  noItemsFoundBuilder:
-                                                      (
-                                                        context,
-                                                      ) => const Padding(
-                                                        padding: EdgeInsets.all(
-                                                          8.0,
-                                                        ),
-                                                        child: Text(
-                                                          'No locations found',
-                                                        ),
-                                                      ),
-                                                  suggestionsBoxDecoration:
-                                                      SuggestionsBoxDecoration(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              8,
-                                                            ),
-                                                        elevation: 4,
-                                                        color: Colors.white,
-                                                        constraints:
-                                                            const BoxConstraints(
-                                                              maxHeight: 200,
-                                                            ),
-                                                      ),
-                                                  debounceDuration:
-                                                      const Duration(
-                                                        milliseconds: 300,
-                                                      ),
-                                                )
-                                                : TextFormField(
-                                                  controller: dropOffController,
-                                                  enabled: false,
-                                                  decoration:
-                                                      const InputDecoration(
-                                                        labelText: 'End-Point',
-                                                        hintText: 'Destination',
-                                                        border:
-                                                            OutlineInputBorder(),
-                                                        contentPadding:
-                                                            EdgeInsets.symmetric(
-                                                              horizontal: 20,
-                                                              vertical: 15,
-                                                            ),
-                                                        suffixIcon: Icon(
-                                                          Icons.lock,
-                                                        ),
-                                                      ),
-                                                  validator: (value) {
-                                                    if (value == null ||
-                                                        value.isEmpty) {
-                                                      return 'Please enter a destination';
-                                                    }
-                                                    return null;
-                                                  },
                                                 ),
+                                              ),
+                                          suggestionsCallback: (pattern) async {
+                                            if (pattern.length >= 3) {
+                                              return await searchSriLankaPlaces(
+                                                pattern,
+                                              );
+                                            }
+                                            return [];
+                                          },
+                                          itemBuilder: (context, suggestion) {
+                                            return ListTile(
+                                              leading: const Icon(
+                                                Icons.location_on,
+                                              ),
+                                              title: Text(
+                                                suggestion['description'],
+                                              ),
+                                              subtitle: const Text('Sri Lanka'),
+                                            );
+                                          },
+                                          onSuggestionSelected: (suggestion) {
+                                            setState(() {
+                                              locationController.text =
+                                                  suggestion['description'];
+                                              locationPlaceId =
+                                                  suggestion['place_id'];
+                                            });
+                                          },
+                                          noItemsFoundBuilder:
+                                              (context) => const Padding(
+                                                padding: EdgeInsets.all(8.0),
+                                                child: Text(
+                                                  'No locations found',
+                                                ),
+                                              ),
+                                          suggestionsBoxDecoration:
+                                              SuggestionsBoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                elevation: 4,
+                                                color: Colors.white,
+                                                constraints:
+                                                    const BoxConstraints(
+                                                      maxHeight: 200,
+                                                    ),
+                                              ),
+                                          debounceDuration: const Duration(
+                                            milliseconds: 300,
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -1446,15 +1273,13 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                       Expanded(
                                         child: GestureDetector(
                                           onTap: () async {
-                                            DateTime?
-                                            pickedDate = await showDatePicker(
-                                              context: context,
-                                              initialDate: DateTime.now(),
-                                              firstDate:
-                                                  DateTime.now(), // Restrict to today and future
-                                              lastDate: DateTime(2100),
-                                              
-                                            );
+                                            DateTime? pickedDate =
+                                                await showDatePicker(
+                                                  context: context,
+                                                  initialDate: DateTime.now(),
+                                                  firstDate: DateTime.now(),
+                                                  lastDate: DateTime(2100),
+                                                );
 
                                             if (pickedDate != null) {
                                               String formattedDate =
@@ -1493,34 +1318,77 @@ class _RidePostScreenState extends State<RidePostScreen> {
                                       ),
                                       const SizedBox(width: 8),
                                       Expanded(
-                                        child: CustomDropdownField(
-                                          label:
-                                              isWSO2Start
-                                                  ? 'Start Time'
-                                                  : 'Arriving Time',
-                                          hintText:
-                                              isWSO2Start
-                                                  ? '17:00:00'
-                                                  : '08:00:00',
-                                          options: _getTimeOptions(),
-                                          value: selectedTime,
-                                          onChanged: (value) {
-                                            setState(() {
-                                              selectedTime = value;
-                                            });
-                                          },
-                                          validator: (value) {
-                                            if (value == null ||
-                                                value.isEmpty) {
-                                              return 'Please select a time';
+                                        child: GestureDetector(
+                                          onTap: () async {
+                                            TimeOfDay?
+                                            pickedTime = await showTimePicker(
+                                              context: context,
+                                              initialTime: TimeOfDay.now(),
+                                              builder: (
+                                                BuildContext context,
+                                                Widget? child,
+                                              ) {
+                                                return Transform.scale(
+                                                  scale:
+                                                      1, 
+                                                  child: Dialog(
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            16,
+                                                          ),
+                                                    ),
+                                                    child: Container(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            0,
+                                                          ),
+                                                      constraints:
+                                                          BoxConstraints(
+                                                            maxWidth:
+                                                                MediaQuery.of(
+                                                                  context,
+                                                                ).size.width *
+                                                                1,
+                                                            maxHeight:
+                                                                MediaQuery.of(
+                                                                  context,
+                                                                ).size.height *
+                                                                0.6,
+                                                          ),
+                                                      child: child,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            );
+
+                                            if (pickedTime != null) {
+                                              String formattedTime =
+                                                  "${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}";
+                                              timeController.text =
+                                                  formattedTime;
                                             }
-                                            return null;
                                           },
+                                          child: AbsorbPointer(
+                                            child: CustomInputField(
+                                              controller: timeController,
+                                              label: 'Time',
+                                              hintText: 'HH:MM',
+                                              validator: (value) {
+                                                if (value == null ||
+                                                    value.isEmpty) {
+                                                  return 'Please select a time';
+                                                }
+                                                return null;
+                                              },
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                  SizedBox(height: 20),
+                                  const SizedBox(height: 20),
                                   CustomButton(
                                     text: 'Post Ride',
                                     onPressed: _postRide,

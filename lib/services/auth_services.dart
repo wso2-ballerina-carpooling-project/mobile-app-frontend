@@ -23,4 +23,13 @@ class ApiService {
 
     return await http.post(url, headers: headers, body: body);
   }
+  static Future<http.Response> sendFCM(String? FCM ,String userId) async {
+    final url = Uri.parse('$baseUrl/fcm');
+    final headers = {
+      'Content-Type': 'application/json',
+    };
+    final body = jsonEncode({"FCM" : FCM,"userId":userId});
+
+    return await http.post(url, headers: headers, body: body);
+  }
 }
