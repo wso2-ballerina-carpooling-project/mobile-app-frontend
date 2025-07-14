@@ -4,6 +4,7 @@ import 'package:jwt_decode/jwt_decode.dart';
 import 'package:mobile_frontend/config/constant.dart';
 import 'package:mobile_frontend/models/RideData.dart';
 import 'package:mobile_frontend/models/user.dart';
+import 'package:mobile_frontend/views/main_navigation.dart' as UserRole;
 import 'package:mobile_frontend/views/passenger/ride_details.dart';
 import 'package:mobile_frontend/views/passenger/ride_map.dart';
 import 'package:http/http.dart' as http;
@@ -34,10 +35,13 @@ class RideListScreen extends StatefulWidget {
 class _RideListScreenState extends State<RideListScreen> {
   final storage = FlutterSecureStorage();
   final DateTime currentDateTime =
-      DateTime.now(); // Updated to 03:58 PM +0530, July 12, 2025
+      DateTime.now(); // 12:50 AM +0530, July 15, 2025
   String? currentUserId;
-  String? jwtToken; // Store the token
+  String? jwtToken;
   List<Future<User?>>? _driverFutures;
+  bool _isLoading = false; // Track loading state
+  bool _isSuccess = false;
+  bool _isError = false;
 
   // Define WSO2 coordinates (approximate for Colombo office)
   static const LatLng wso2Location = LatLng(6.9271, 79.8612);
@@ -46,7 +50,7 @@ class _RideListScreenState extends State<RideListScreen> {
   void initState() {
     super.initState();
     _loadCurrentUserId();
-    _loadJwtToken(); // Load token asynchronously
+    _loadJwtToken();
     _initializeDriverFutures();
   }
 
@@ -54,6 +58,11 @@ class _RideListScreenState extends State<RideListScreen> {
     try {
       String? token = await storage.read(key: 'jwt_token');
       if (token == null) {
+        _showErrorDialog(
+          context,
+          'Error',
+          'No authentication token found. Please log in again.',
+        );
         Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
         return;
       }
@@ -63,12 +72,18 @@ class _RideListScreenState extends State<RideListScreen> {
         payload = Jwt.parseJwt(token);
       } catch (e) {
         await storage.delete(key: 'jwt_token');
+        _showErrorDialog(context, 'Error', 'Invalid token: $e');
         Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
         return;
       }
 
       if (Jwt.isExpired(token)) {
         await storage.delete(key: 'jwt_token');
+        _showErrorDialog(
+          context,
+          'Error',
+          'Token has expired. Please log in again.',
+        );
         Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
         return;
       }
@@ -77,9 +92,7 @@ class _RideListScreenState extends State<RideListScreen> {
         currentUserId = payload['id'];
       });
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error loading user data: $e')));
+      _showErrorDialog(context, 'Error', 'Error loading user data: $e');
       Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
     }
   }
@@ -106,24 +119,33 @@ class _RideListScreenState extends State<RideListScreen> {
     LatLng? waypointLatLng,
     double cost,
   ) async {
+    setState(() {
+      _isLoading = true; // Set loading state
+    });
+
     final token = await storage.read(key: 'jwt_token');
     if (token == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No authentication token found. Please log in again.'),
-        ),
+      _showErrorDialog(
+        context,
+        'Error',
+        'No authentication token found. Please log in again.',
       );
+      setState(() {
+        _isLoading = false; // Reset loading state on error
+      });
       return;
     }
 
     if (waypointLatLng == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Waypoint location is not available.')),
-      );
+      _showErrorDialog(context, 'Error', 'Waypoint location is not available.');
+      setState(() {
+        _isLoading = false; // Reset loading state on error
+      });
       return;
     }
 
-    const String baseUrl = 'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
+    const String baseUrl =
+        'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
     final url = Uri.parse('$baseUrl/rides/book');
     final body = jsonEncode({
       'rideId': rideId,
@@ -132,31 +154,51 @@ class _RideListScreenState extends State<RideListScreen> {
       'cost': cost,
     });
 
-    final response = await http.post(
-      url,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: body,
-    );
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ride booked successfully!')),
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: body,
       );
-      final ride = widget.rides.firstWhere((r) => r['rideId'] == rideId);
-      final driverToken = ride['driverToken'];
-      if (driverToken != null) {
-        await _sendNotificationToDriver(driverToken, rideId);
+
+      setState(() {
+        _isLoading = false; // Reset loading state after response
+      });
+      print('Response status: ${response.statusCode}, Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('Success case reached');
+        // Use post-frame callback to ensure context is valid after state update
+        setState(() {
+          _isSuccess = true; // Reset loading state after response
+        });
+      } else {
+        try {
+          final errorMessage =
+              jsonDecode(response.body)['message'] ?? 'Failed to book ride';
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showErrorDialog(context, 'Booking Failed', errorMessage);
+          });
+        } catch (e) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showErrorDialog(
+              context,
+              'Booking Failed',
+              'Invalid response format: $e',
+            );
+          });
+        }
       }
-      setState(() {}); // Refresh to update booked status
-    } else {
-      final errorMessage =
-          jsonDecode(response.body)['message'] ?? 'Failed to book ride';
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $errorMessage')));
+    } catch (e) {
+      setState(() {
+        _isLoading = false; // Reset loading state on exception
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showErrorDialog(context, 'Error', 'An error occurred: $e');
+      });
     }
   }
 
@@ -165,7 +207,8 @@ class _RideListScreenState extends State<RideListScreen> {
     String rideId,
     String token,
   ) async {
-    const String baseUrl = 'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
+    const String baseUrl =
+        'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
     final url = Uri.parse('$baseUrl/rides/calculateCost');
     final body = jsonEncode({'rideId': rideId, 'distance': distance});
 
@@ -191,9 +234,6 @@ class _RideListScreenState extends State<RideListScreen> {
   }
 
   double _calculateDistanceToRide(LatLng waypoint, bool waytowork) {
-    if (waypoint == null) return 0.0; // Safety check
-
-    // Calculate straight-line distance between waypoint and wso2Location
     double distance = _calculateDistance(
       waytowork ? waypoint : wso2Location,
       waytowork ? wso2Location : waypoint,
@@ -219,50 +259,11 @@ class _RideListScreenState extends State<RideListScreen> {
     return earthRadius * c;
   }
 
-  double _calculateDistanceToWSO2(LatLng? waypoint) {
-    if (waypoint == null) return 0.0; // Return 0 if waypoint is null
-    return _calculateDistance(waypoint, wso2Location) /
-        1000; // Convert to kilometers
-  }
-
-  Future<void> _sendNotificationToDriver(
-    String driverToken,
-    String rideId,
-  ) async {
-    const String fcmUrl = 'https://fcm.googleapis.com/fcm/send';
-    const String serverKey = "shidGdj08HHsb_jDhBCR";
-
-    final body = {
-      'to': driverToken,
-      'notification': {
-        'title': 'New Ride Booking',
-        'body':
-            'A passenger has booked your ride (ID: $rideId) at ${currentDateTime.toString()}!',
-      },
-      'data': {'click_action': 'FLUTTER_NOTIFICATION_CLICK', 'rideId': rideId},
-    };
-
-    final response = await http.post(
-      Uri.parse(fcmUrl),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'key=$serverKey',
-      },
-      body: jsonEncode(body),
-    );
-
-    if (response.statusCode == 200) {
-      print('Notification sent successfully');
-    } else {
-      print('Failed to send notification: ${response.body}');
-    }
-  }
-
   Future<User?> _fetchDriverDetails(String driverId) async {
     final token = await storage.read(key: 'jwt_token');
-    if (token == null || driverId == null) return null;
 
-    const String baseUrl = 'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
+    const String baseUrl =
+        'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
     final url = Uri.parse('$baseUrl/driver/$driverId');
 
     try {
@@ -273,7 +274,7 @@ class _RideListScreenState extends State<RideListScreen> {
           'Content-Type': 'application/json',
         },
       );
-
+      print('Driver details response status: ${response.statusCode}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final userData =
@@ -439,8 +440,91 @@ class _RideListScreenState extends State<RideListScreen> {
     );
   }
 
+  void _showErrorDialog(BuildContext context, String title, String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Prevent dismissing by tapping outside
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+void _showSuccessDialog(BuildContext context, String message) {
+  showDialog(
+    context: context,
+    barrierDismissible: false, // Prevent dismissing by tapping outside
+    builder: (BuildContext context) {
+      return AlertDialog(
+        backgroundColor: Colors.white, // Set background color to white
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(5), // Rounded corners
+        ),
+        title: const Text(
+          'Success',
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(
+            color: Colors.black54,
+            fontSize: 16,
+          ),
+        ),
+        actions: [
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.blue,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            child: const Text(
+              'OK',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => UserRole.MainNavigation(
+                    userRole: UserRole.UserRole.passenger,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
   @override
   Widget build(BuildContext context) {
+    if (_isSuccess) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showSuccessDialog(context, 'Ride booked successfully!');
+      });
+    }
+    // Show error dialog if _isError is true (optional, kept for consistency)
+    if (_isError) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showErrorDialog(context, 'Error', 'An error occurred.');
+      });
+    }
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF0A0E2A),
@@ -653,36 +737,57 @@ class _RideListScreenState extends State<RideListScreen> {
                                   children: [
                                     SizedBox(
                                       width: 80,
-                                      child: ElevatedButton(
-                                        onPressed:
-                                            isBooked
-                                                ? null
-                                                : () => _bookRide(
-                                                  context,
-                                                  rideObject.rideId,
-                                                  widget.waypoint,
-                                                  widget.waypointLatLng,
-                                                  cost,
+                                      child: Builder(
+                                        builder:
+                                            (innerContext) => ElevatedButton(
+                                              onPressed:
+                                                  _isLoading || isBooked
+                                                      ? null
+                                                      : () async {
+                                                        await _bookRide(
+                                                          innerContext,
+                                                          rideObject.rideId,
+                                                          widget.waypoint,
+                                                          widget.waypointLatLng,
+                                                          cost,
+                                                        );
+                                                      },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    _isLoading || isBooked
+                                                        ? Colors.grey
+                                                        : Colors.blue,
+                                                foregroundColor: Colors.white,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
                                                 ),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              isBooked
-                                                  ? Colors.grey
-                                                  : Colors.blue,
-                                          foregroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 8,
+                                                    ),
+                                              ),
+                                              child:
+                                                  _isLoading
+                                                      ? const SizedBox(
+                                                        width: 20,
+                                                        height: 20,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                              color:
+                                                                  Colors.white,
+                                                              strokeWidth: 2,
+                                                            ),
+                                                      )
+                                                      : Text(
+                                                        isBooked
+                                                            ? 'Booked'
+                                                            : 'Book',
+                                                        style: const TextStyle(
+                                                          fontSize: 14,
+                                                        ),
+                                                      ),
                                             ),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 8,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          isBooked ? 'Booked' : 'Book',
-                                          style: const TextStyle(fontSize: 14),
-                                        ),
                                       ),
                                     ),
                                     Expanded(
@@ -704,7 +809,6 @@ class _RideListScreenState extends State<RideListScreen> {
                                                 isBooked
                                                     ? null
                                                     : () {
-                                                      // Disable when booked
                                                       Navigator.push(
                                                         context,
                                                         MaterialPageRoute(

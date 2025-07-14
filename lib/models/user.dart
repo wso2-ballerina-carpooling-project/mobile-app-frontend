@@ -8,7 +8,6 @@ class User {
   final String lastName;
   final UserRole role;
   final UserStatus status;
-  final int seatingCapacity;
   final DriverDetails? driverDetails;
   final String? phone;
   final String? createdAt; // Handling the array [timestamp, float] as a string for now
@@ -20,7 +19,6 @@ class User {
     required this.lastName,
     required this.role,
     required this.status,
-    required this.seatingCapacity,
     this.driverDetails,
     this.phone,
     this.createdAt,
@@ -40,7 +38,6 @@ class User {
         (status) => status.toString() == 'UserStatus.${json['status']}',
         orElse: () => UserStatus.pending,
       ),
-      seatingCapacity: json['seatingCapacity'] as int,
       driverDetails: json['driverDetails'] != null
           ? DriverDetails.fromJson(json['driverDetails'])
           : null,
