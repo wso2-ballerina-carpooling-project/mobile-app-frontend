@@ -199,7 +199,7 @@ class RideService {
       if (token == null) return [];
 
       final response = await http.get(
-        Uri.parse('http://192.168.8.109:9090/api/passengerOngoingRide'),
+        Uri.parse('$baseUrl/passengerOngoingRide'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -231,7 +231,7 @@ class RideService {
       if (token == null) return [];
 
       final response = await http.get(
-        Uri.parse('http://192.168.8.109:9090/api/passengerCompleteRide'),
+        Uri.parse('$baseUrl/passengerCompleteRide'),
         headers: {'Authorization': 'Bearer $token'},
       );
 

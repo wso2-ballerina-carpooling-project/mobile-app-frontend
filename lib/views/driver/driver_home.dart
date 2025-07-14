@@ -307,6 +307,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                                       width: screenWidth * 0.95,
                                       child: RouteCard(
                                         rideId: ride.id,
+                                        ride:ride,
                                         Date: ride.date,
                                         startTime: ride.startTime,
                                         duration: ride.duration,

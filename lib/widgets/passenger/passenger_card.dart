@@ -167,9 +167,7 @@ class _PassengerRideCardState extends State<PassengerRideCard> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('View More clicked')),
-                  );
+                  
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: mainButtonColor,

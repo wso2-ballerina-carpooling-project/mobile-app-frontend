@@ -1,6 +1,7 @@
 
 // lib/config/routes.dart
 import 'package:flutter/material.dart';
+import 'package:mobile_frontend/models/RideData.dart';
 import 'package:mobile_frontend/views/auth/awaiting_verification.dart';
 import 'package:mobile_frontend/views/common/name_update.dart';
 import 'package:mobile_frontend/views/common/vehicle_update.dart';
@@ -20,9 +21,9 @@ final Map<String, WidgetBuilder> routes = {
   '/role': (context) => RoleSelectionScreen(userData: ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>,),
   '/driver-details': (context) => DriverDetailsScreen(userData: ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>,),
   '/waiting': (context) => AwaitingVerificationScreen(),
-'/rideStart': (context) => RideStartScreen(
-              rideId: ModalRoute.of(context)!.settings.arguments as String,
-            ),
+  '/rideStart': (context) => DriverRideTracking(
+                ride: ModalRoute.of(context)!.settings.arguments as Ride,
+              ),
   '/phoneEdit': (context) => PhoneUpdate(),
   '/nameEdit' : (context) => NameUpdateScreen(),
   '/vehicleEdit' : (context) => VehicleUpdate(),

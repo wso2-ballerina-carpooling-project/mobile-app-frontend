@@ -39,7 +39,7 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
   Future<Map<String, dynamic>> _fetchPassengerDetails(
     String passengerId,
   ) async {
-    const String baseUrl = 'http://172.20.10.2:9090/api'; // Adjust IP as needed
+    const String baseUrl = 'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0'; // Adjust IP as needed
     final url = Uri.parse('$baseUrl/passenger/$passengerId');
 
     try {

@@ -24,7 +24,7 @@ class ApiService {
     return await http.post(url, headers: headers, body: body);
   }
   static Future<http.Response> sendFCM(String? FCM ,String userId) async {
-    final url = Uri.parse('http://192.168.8.109:9090/api/fcm');
+    final url = Uri.parse('$baseUrl/fcm');
     final headers = {
       'Content-Type': 'application/json',
     };

@@ -39,7 +39,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       throw Exception('Authentication token not available');
     }
 
-    const String baseUrl = 'http://192.168.8.109:9090/api'; // Adjust IP as needed
+    const String baseUrl = 'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0'; // Adjust IP as needed
     final url = Uri.parse('$baseUrl/notifications');
     print('Requesting: $url with token: $jwtToken');
 

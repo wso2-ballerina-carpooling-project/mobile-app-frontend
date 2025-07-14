@@ -144,7 +144,7 @@ class _RouteCardPassengerState extends State<RouteCardPassenger>
                           ),
                         ],
                       ),
-                      child: Column(
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
@@ -156,7 +156,7 @@ class _RouteCardPassengerState extends State<RouteCardPassenger>
                             ),
                           ),
                           Text(
-                            widget.time,
+                            " | " + widget.time,
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
@@ -192,7 +192,7 @@ class _RouteCardPassengerState extends State<RouteCardPassenger>
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -230,7 +230,7 @@ class _RouteCardPassengerState extends State<RouteCardPassenger>
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 if (widget.isRideStarted)
                   Center(
                     child: Row(
@@ -251,6 +251,17 @@ class _RouteCardPassengerState extends State<RouteCardPassenger>
                           ),
                         ),
                       ],
+                    ),
+                  )
+                else
+                  Center(
+                    child: Text(
+                      'Driver not started ride yet',
+                      style: TextStyle(
+                        color: textColor.withOpacity(0.7),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
               ],

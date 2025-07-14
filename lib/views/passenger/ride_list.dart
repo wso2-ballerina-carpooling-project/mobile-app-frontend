@@ -123,7 +123,7 @@ class _RideListScreenState extends State<RideListScreen> {
       return;
     }
 
-    const String baseUrl = 'http://192.168.8.109:9090/api';
+    const String baseUrl = 'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
     final url = Uri.parse('$baseUrl/rides/book');
     final body = jsonEncode({
       'rideId': rideId,
@@ -165,7 +165,7 @@ class _RideListScreenState extends State<RideListScreen> {
     String rideId,
     String token,
   ) async {
-    const String baseUrl = 'http://192.168.8.109:9090/api';
+    const String baseUrl = 'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
     final url = Uri.parse('$baseUrl/rides/calculateCost');
     final body = jsonEncode({'rideId': rideId, 'distance': distance});
 
@@ -262,7 +262,7 @@ class _RideListScreenState extends State<RideListScreen> {
     final token = await storage.read(key: 'jwt_token');
     if (token == null || driverId == null) return null;
 
-    const String baseUrl = 'http://192.168.8.109:9090/api';
+    const String baseUrl = 'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
     final url = Uri.parse('$baseUrl/driver/$driverId');
 
     try {

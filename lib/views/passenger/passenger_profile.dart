@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:jwt_decode/jwt_decode.dart';
 import 'package:mobile_frontend/config/constant.dart';
-import 'package:mobile_frontend/helpers/auth_helper.dart'; // ✅ Import the logout helper
+import 'package:image_picker/image_picker.dart';
 
 class PassengerProfile extends StatefulWidget {
   const PassengerProfile({super.key});
@@ -15,17 +16,67 @@ class _PassengerProfileState extends State<PassengerProfile> {
   String profileImageUrl = 'https://i.pravatar.cc/150?img=33';
   File? _imageFile;
   final ImagePicker _picker = ImagePicker();
+  final _storage = FlutterSecureStorage();
 
-  String userName = 'Nalaka Dinesh';
-  String userPhone = '071 929 7961';
-  String userEmail = 'nalaka@wso2.com';
+  // User data
+  String firstName = '';
+  String lastName = '';
+  String userName = '';
+  String userPhone = '';
+  String userEmail = '';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    setState(() => _isLoading = true);
+    try {
+      String? token = await _storage.read(key: 'jwt_token');
+      if (token == null) {
+        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+        return;
+      }
+
+      Map<String, dynamic> payload;
+      try {
+        payload = Jwt.parseJwt(token);
+      } catch (e) {
+        await _storage.delete(key: 'jwt_token');
+        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+        return;
+      }
+
+      if (Jwt.isExpired(token)) {
+        await _storage.delete(key: 'jwt_token');
+        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+        return;
+      }
+
+      setState(() {
+        firstName = payload['firstName'] ?? 'Unknown User';
+        lastName = payload['lastName'] ?? 'Unknown User';
+        userPhone = payload['phone'] ?? 'Not Provided';
+        userEmail = payload['email'] ?? 'Not Provided';
+        userName = '$firstName $lastName';
+        _isLoading = false;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading user data: $e')));
+      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+    }
+  }
 
   Future<void> _pickImage(ImageSource source) async {
     final XFile? selectedImage = await _picker.pickImage(source: source);
     if (selectedImage != null) {
-      setState(() {
-        _imageFile = File(selectedImage.path);
-      });
+      setState(() => _imageFile = File(selectedImage.path));
+      // TODO: Upload image to server and update profileImageUrl
     }
   }
 
@@ -60,8 +111,97 @@ class _PassengerProfileState extends State<PassengerProfile> {
     );
   }
 
+  Future<void> logout() async {
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            backgroundColor: Colors.white,
+            elevation: 8,
+            title: Text(
+              'Logout',
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: const Text(
+              'Are you sure you want to log out?',
+              style: TextStyle(color: Colors.black87, fontSize: 16),
+            ),
+            actionsPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: linkColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  side: BorderSide(color: linkColor, width: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text(
+                  'Logout',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  backgroundColor: mainButtonColor,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ],
+          ),
+    );
+
+    if (confirm == true) {
+      try {
+        await _storage.delete(key: 'jwt_token');
+        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+      } catch (e) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error during logout: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       backgroundColor: primaryColor,
       body: SafeArea(
@@ -74,26 +214,47 @@ class _PassengerProfileState extends State<PassengerProfile> {
                 children: [
                   GestureDetector(
                     onTap: _showImageSourceActionSheet,
-                    child: CircleAvatar(
-                      radius: 30,
-                      backgroundImage: _imageFile != null
-                          ? FileImage(_imageFile!) as ImageProvider
-                          : NetworkImage(profileImageUrl),
+                    child: Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 35,
+                          backgroundImage:
+                              _imageFile != null
+                                  ? FileImage(_imageFile!) as ImageProvider
+                                  : NetworkImage(profileImageUrl),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              size: 16,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 15),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
+                      children: [
+                        const Text(
                           'Hi there,',
                           style: TextStyle(color: Colors.white, fontSize: 16),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
-                          'John Doe',
-                          style: TextStyle(
+                          userName,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 22,
                             fontWeight: FontWeight.w600,
@@ -105,130 +266,167 @@ class _PassengerProfileState extends State<PassengerProfile> {
                 ],
               ),
             ),
+            const SizedBox(height: 20),
             Expanded(
               child: Container(
-                margin: const EdgeInsets.only(top: 20),
                 width: double.infinity,
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.only(topLeft: Radius.circular(30)),
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(20)),
                 ),
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 10),
                       const Text(
                         'Your Information',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.w500,
-                          color: Colors.black87,
+                          color: blackWithOpacity,
                         ),
                       ),
                       const SizedBox(height: 20),
-                      InkWell(
-                        onTap: _showImageSourceActionSheet,
-                        child: const ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Icon(Icons.person_outline, color: Colors.black54),
-                          title: Text('Profile Picture'),
-                          trailing: Icon(Icons.camera_alt, size: 18, color: Colors.grey),
+                      ListTile(
+                        leading: const Icon(
+                          Icons.person_pin_rounded,
+                          color: Colors.black54,
                         ),
+                        title: const Text('Profile Picture'),
+                        trailing: GestureDetector(
+                          onTap: _showImageSourceActionSheet,
+                          child: CircleAvatar(
+                            radius: 15,
+                            backgroundImage:
+                                _imageFile != null
+                                    ? FileImage(_imageFile!) as ImageProvider
+                                    : NetworkImage(profileImageUrl),
+                          ),
+                        ),
+                        onTap: _showImageSourceActionSheet,
                       ),
                       const Divider(height: 1),
                       InkWell(
-                        onTap: () {
-                          Navigator.of(context).pushReplacementNamed('/nameEdit');
+                        onTap: () async {
+                          final result =
+                              await Navigator.pushNamed(
+                                    context,
+                                    '/nameEdit',
+                                    arguments: {
+                                      'firstName': firstName,
+                                      'lastName': lastName,
+                                    },
+                                  )
+                                  as Map<String, dynamic>?;
+                          if (result != null) {
+                            setState(() {
+                              firstName = result['firstName'] ?? firstName;
+                              lastName = result['lastName'] ?? lastName;
+                              userName = '$firstName $lastName';
+                            });
+                            await _loadUserData();
+                          }
                         },
                         child: ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: const Icon(Icons.person_outline, color: Colors.black54),
+                          leading: const Icon(
+                            Icons.person,
+                            color: Colors.black54,
+                          ),
                           title: const Text('Name'),
                           subtitle: Text(userName),
-                          trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: Colors.black54,
+                          ),
                         ),
                       ),
                       const Divider(height: 1),
                       InkWell(
-                        onTap: () {
-                          Navigator.of(context).pushReplacementNamed('/phoneEdit');
+                        onTap: () async {
+                          final result =
+                              await Navigator.pushNamed(
+                                    context,
+                                    '/phoneEdit',
+                                    arguments: userPhone,
+                                  )
+                                  as String?;
+                          if (result != null) {
+                            setState(() {
+                              userPhone = result;
+                            });
+                            await _loadUserData(); // Reload data to sync with new token
+                          }
                         },
                         child: ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: const Icon(Icons.phone_outlined, color: Colors.black54),
+                          leading: const Icon(
+                            Icons.phone,
+                            color: Colors.black54,
+                          ),
                           title: const Text('Phone'),
                           subtitle: Text(userPhone),
-                          trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: Colors.black54,
+                          ),
                         ),
                       ),
                       const Divider(height: 1),
                       ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.email_outlined, color: Colors.black54),
+                        leading: const Icon(Icons.email, color: Colors.black54),
                         title: const Text('Email'),
                         subtitle: Text(userEmail),
                       ),
                       const Divider(height: 1),
-                      const SizedBox(height: 60),
-                      Center(
+                      const Center(
                         child: Text.rich(
                           TextSpan(
-                            text: 'Switch accounts? Be a ',
-                            style: const TextStyle(fontSize: 12, color: Colors.black87),
+                            text: 'Got a seat? Be a ',
+                            style: TextStyle(color: Colors.black87),
                             children: [
                               TextSpan(
                                 text: 'Driver',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: linkColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: TextStyle(color: linkColor),
                               ),
                             ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      // ✅ Logout Button using helper
+                      const SizedBox(height: 10),
                       SizedBox(
                         width: double.infinity,
                         child: OutlinedButton(
-                          onPressed: () {
-                            logout(context); // <--- logout function call
-                          },
+                          onPressed: logout,
                           style: OutlinedButton.styleFrom(
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(50),
                             ),
                             foregroundColor: Colors.black,
                             padding: const EdgeInsets.symmetric(vertical: 15),
-                            side: const BorderSide(color: Colors.black12),
                           ),
                           child: const Text('Logout'),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      Center(
+                      const SizedBox(height: 10),
+                      const Center(
                         child: Text.rich(
                           TextSpan(
                             text: 'Monthly Report ',
-                            style: const TextStyle(fontSize: 12, color: Colors.black87),
+                            style: TextStyle(color: Colors.black87),
                             children: [
                               TextSpan(
                                 text: 'Download Here',
                                 style: TextStyle(
-                                  fontSize: 12,
-                                  color: linkColor,
-                                  fontWeight: FontWeight.bold,
+                                  color: Color.fromRGBO(71, 71, 231, 1),
                                 ),
                               ),
                             ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 10),
                     ],
                   ),
                 ),
