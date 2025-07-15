@@ -113,6 +113,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.8"
+  equatable:
+    dependency: transitive
+    description:
+      name: equatable
+      sha256: "567c64b3cb4cf82397aac55f4f0cbd3ca20d77c6c03bedbc4ceaddc08904aef7"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.7"
   fake_async:
     dependency: transitive
     description:
@@ -1004,6 +1012,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.4"
+  twilio_voice_flutter:
+    dependency: "direct main"
+    description:
+      name: twilio_voice_flutter
+      sha256: "9e68b6bebbc5b25325e3c83690cb5a7994f28d141d5e3d486bc1682fd665507b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.6"
   typed_data:
     dependency: transitive
     description:

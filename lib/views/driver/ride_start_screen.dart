@@ -32,6 +32,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
   String? durationText;
   String? etaText;
   String? passengerName;
+  String? phone;
   WebSocketChannel? _channel;
   bool _isWebSocketConnected = false;
   Timer? _heartbeatTimer;
@@ -192,6 +193,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
           passengerDetails[passengerId] = userDetails;
           if (nextPassenger?.passengerId == passengerId) {
             passengerName = userDetails['firstName'] as String? ?? 'Unknown';
+            phone = userDetails['phone'] as String;
           }
         });
         return userDetails;
@@ -241,9 +243,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
           nextPassenger != null) {
         if (passengerDetails[nextPassenger!.passengerId] == null) {
           await _fetchPassengerDetails(nextPassenger!.passengerId);
-        } else {
-          
-        }
+        } else {}
         if (waypointAddresses[nextPassenger!.passengerId] == null) {
           await _fetchWaypointAddress(
             nextPassenger!.passengerId,
@@ -427,47 +427,57 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
   }
 
   Future<void> _initializeWebSocket() async {
-    try {
-      _channel = WebSocketChannel.connect(
-        Uri.parse(
-          "wss://6a087cec-06ac-4af3-89fa-e6e37f8ac222-dev.e1-us-east-azure.choreoapis.dev/websocket/websocket/v1.0",
-        ),
-      );
-      _channel!.stream.listen(
-        (message) => _handleWebSocketMessage(message),
-        onError: (error) {
-          _isWebSocketConnected = false;
-          _attemptReconnection();
-        },
-        onDone: () {
-          _isWebSocketConnected = false;
-          _attemptReconnection();
-        },
-      );
-      _sendInitialConnectionMessage();
-      _startHeartbeat();
-      setState(() => _isWebSocketConnected = true);
-    } catch (e) {
-      _isWebSocketConnected = false;
-      _attemptReconnection();
-    }
-  }
+  try {
+    _channel = WebSocketChannel.connect(
+      Uri.parse("wss://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/websocket/websocket/v1.0"),
+    );
 
-  void _sendInitialConnectionMessage() {
-    if (_channel != null && _isWebSocketConnected) {
-      final message = {
-        'type': 'driver_connected',
-        'driver_id': widget.ride.driverId,
-        'ride_id': widget.ride.rideId,
-        'timestamp': DateTime.now().toIso8601String(),
-      };
-      _channel!.sink.add(jsonEncode(message));
-    }
+    _channel!.stream.listen(
+      (message) => _handleWebSocketMessage(message),
+      onError: (error) {
+        _isWebSocketConnected = false;
+        _attemptReconnection();
+      },
+      onDone: () {
+        _isWebSocketConnected = false; // ❗ you had this set to true mistakenly
+        _attemptReconnection();
+      },
+    );
+
+    _isWebSocketConnected = true;
+    _startHeartbeat();
+
+    /// ✅ Delay sending the initial message to give handshake time
+    await Future.delayed(Duration(milliseconds: 300));
+    _sendInitialConnectionMessage();
+
+    setState(() {});
+  } catch (e) {
+    _isWebSocketConnected = false;
+    _attemptReconnection();
   }
+}
+
+
+  void _sendInitialConnectionMessage() async {
+  if (_channel != null && _isWebSocketConnected) {
+    final message = {
+      'type': 'driver_connected',
+      'driver_id': widget.ride.driverId,
+      'ride_id': widget.ride.rideId,
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+    print("📤 Sending initial connection message: ${jsonEncode(message)}");
+    _channel!.sink.add(jsonEncode(message));
+  } else {
+    print("⚠️ WebSocket not connected, cannot send initial connection message");
+  }
+}
+
 
   void _startHeartbeat() {
     _heartbeatTimer?.cancel();
-    _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
       if (_channel != null && _isWebSocketConnected) {
         final heartbeat = {
           'type': 'heartbeat',
@@ -581,7 +591,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                             currentPosition!.longitude,
                           )
                           : widget.ride.route.polyline.first,
-                  zoom: 12,
+                  zoom: 24,
                 ),
                 markers: markers,
                 polylines: polylines,
@@ -735,8 +745,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                       child: IconButton(
                         icon: const Icon(Icons.call, color: Colors.white),
                         onPressed: () {
-                          // Add your call functionality here
-                          // For now, it's null as in your original code
+                          //_call()
                         },
                         tooltip: 'Call Passenger',
                       ),
@@ -803,14 +812,15 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
   }
 }
 
-Widget _buildInfoRow(IconData icon, String label, String value, Color iconColor) {
+Widget _buildInfoRow(
+  IconData icon,
+  String label,
+  String value,
+  Color iconColor,
+) {
   return Row(
     children: [
-      Icon(
-        icon,
-        color: iconColor,
-        size: 16,
-      ),
+      Icon(icon, color: iconColor, size: 16),
       const SizedBox(width: 8),
       Text(
         '$label: ',
