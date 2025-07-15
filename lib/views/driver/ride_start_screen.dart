@@ -39,6 +39,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
   Map<String, dynamic> passengerDetails = {};
   Map<String, String> waypointAddresses = {};
 
+
   @override
   void initState() {
     super.initState();
@@ -591,7 +592,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                             currentPosition!.longitude,
                           )
                           : widget.ride.route.polyline.first,
-                  zoom: 24,
+                  zoom: 30,
                 ),
                 markers: markers,
                 polylines: polylines,
