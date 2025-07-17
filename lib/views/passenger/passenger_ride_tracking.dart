@@ -1,7 +1,7 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -13,7 +13,11 @@ import 'package:mobile_frontend/models/RideData.dart';
 class PassengerRideTracking extends StatefulWidget {
   final Ride ride;
   final String passengerId;
-  const PassengerRideTracking({super.key, required this.ride, required this.passengerId});
+  const PassengerRideTracking({
+    super.key,
+    required this.ride,
+    required this.passengerId,
+  });
 
   @override
   State<PassengerRideTracking> createState() => _PassengerRideTrackingState();
@@ -37,6 +41,7 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
   LatLng? _driverPosition;
   LatLng? _currentPassengerWaypoint;
   bool _isPassengerPickedUp = false;
+  bool _isDisposed = false;
 
   // Current date and time: 08:14 PM +0530, Thursday, July 17, 2025
   final DateTime _currentTime = DateTime(2025, 7, 17, 20, 14);
@@ -51,6 +56,7 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
 
   @override
   void dispose() {
+    _isDisposed = true;
     _closeWebSocket();
     mapController.dispose();
     super.dispose();
@@ -132,7 +138,9 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
               distanceText = element['distance']['text'];
               durationText = element['duration_in_traffic']['text'];
               int durationSeconds = element['duration_in_traffic']['value'];
-              DateTime eta = _currentTime.add(Duration(seconds: durationSeconds));
+              DateTime eta = _currentTime.add(
+                Duration(seconds: durationSeconds),
+              );
               etaText = '${eta.hour}:${eta.minute.toString().padLeft(2, '0')}';
             });
           } else {
@@ -151,8 +159,14 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
 
   Future<void> _loadIcons() async {
     const imageConfiguration = ImageConfiguration(size: Size(48, 48));
-    _pinIcon = await BitmapDescriptor.asset(imageConfiguration, 'assets/pin.png');
-    _carIcon = await BitmapDescriptor.asset(imageConfiguration, 'assets/car-d.png');
+    _pinIcon = await BitmapDescriptor.asset(
+      imageConfiguration,
+      'assets/pin.png',
+    );
+    _carIcon = await BitmapDescriptor.asset(
+      imageConfiguration,
+      'assets/car-d.png',
+    );
     setState(() {
       isLoading = false;
     });
@@ -177,11 +191,11 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
         (message) => _handleWebSocketMessage(message),
         onError: (error) {
           _isWebSocketConnected = false;
-          _attemptReconnection();
+          if (!_isDisposed) _attemptReconnection();
         },
         onDone: () {
           _isWebSocketConnected = false;
-          _attemptReconnection();
+          if (!_isDisposed) _attemptReconnection();
         },
       );
 
@@ -197,7 +211,9 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
   }
 
   void _sendInitialConnectionMessage() async {
-    if (_channel != null && _isWebSocketConnected && _currentPassengerWaypoint != null) {
+    if (_channel != null &&
+        _isWebSocketConnected &&
+        _currentPassengerWaypoint != null) {
       final message = {
         'type': 'passenger_connected',
         'passenger_id': widget.passengerId,
@@ -221,14 +237,19 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
         case 'driver_location_update':
           setState(() {
             _driverPosition = LatLng(data['latitude'], data['longitude']);
-            if (_driverPosition != null && _currentPassengerWaypoint != null && !_isPassengerPickedUp) {
+            if (_driverPosition != null &&
+                _currentPassengerWaypoint != null &&
+                !_isPassengerPickedUp) {
               _updateMarkers(_currentPassengerWaypoint!);
               _fetchDrivingRoute(_driverPosition!, _currentPassengerWaypoint!);
               _animateCameraToPosition(_driverPosition!);
               _updatePolyline();
             } else if (_driverPosition != null && _isPassengerPickedUp) {
               _updateMarkers(widget.ride.route.polyline.last);
-              _fetchDrivingRoute(_driverPosition!, widget.ride.route.polyline.last);
+              _fetchDrivingRoute(
+                _driverPosition!,
+                widget.ride.route.polyline.last,
+              );
               _animateCameraToPosition(_driverPosition!);
               _updatePolyline();
             }
@@ -237,11 +258,19 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
         case 'pickup_confirmation':
           if (data['driver_location'] != null) {
             setState(() {
-              _driverPosition = LatLng(data['driver_location']['latitude'], data['driver_location']['longitude']);
+              _driverPosition = LatLng(
+                data['driver_location']['latitude'],
+                data['driver_location']['longitude'],
+              );
               driverName = data['driver_name'] ?? 'Unknown Driver';
-              if (_driverPosition != null && _currentPassengerWaypoint != null && !_isPassengerPickedUp) {
+              if (_driverPosition != null &&
+                  _currentPassengerWaypoint != null &&
+                  !_isPassengerPickedUp) {
                 _updateMarkers(_currentPassengerWaypoint!);
-                _fetchDrivingRoute(_driverPosition!, _currentPassengerWaypoint!);
+                _fetchDrivingRoute(
+                  _driverPosition!,
+                  _currentPassengerWaypoint!,
+                );
                 _animateCameraToPosition(_driverPosition!);
                 _updatePolyline();
               }
@@ -253,7 +282,10 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
             _isPassengerPickedUp = true;
             _updateMarkers(widget.ride.route.polyline.last);
             if (_driverPosition != null) {
-              _fetchDrivingRoute(_driverPosition!, widget.ride.route.polyline.last);
+              _fetchDrivingRoute(
+                _driverPosition!,
+                widget.ride.route.polyline.last,
+              );
               _animateCameraToPosition(_driverPosition!);
               _updatePolyline();
             }
@@ -266,25 +298,68 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
   }
 
   void _updatePolyline() {
+    _updatePolylineAsync();
+  }
+
+  Future<void> _updatePolylineAsync() async {
     polylines.clear();
     polylineCoordinates.clear();
 
     if (_driverPosition != null) {
-      polylineCoordinates.add(_driverPosition!);
-
       if (!_isPassengerPickedUp && _currentPassengerWaypoint != null) {
-        // Before pickup, use the route up to the current passenger's waypoint
-        final passengerIndex = widget.ride.route.polyline.indexWhere(
-          (point) => point.latitude == _currentPassengerWaypoint!.latitude &&
+        final route = widget.ride.route.polyline;
+        // Find nearest point on route to driver
+        int nearestIndex = 0;
+        double minDist = double.infinity;
+        for (int i = 0; i < route.length; i++) {
+          final d = _calculateDistance(_driverPosition!, route[i]);
+          if (d < minDist) {
+            minDist = d;
+            nearestIndex = i;
+          }
+        }
+        // Find passenger waypoint index
+        final passengerIndex = route.indexWhere(
+          (point) =>
+              point.latitude == _currentPassengerWaypoint!.latitude &&
               point.longitude == _currentPassengerWaypoint!.longitude,
         );
-        if (passengerIndex != -1) {
-          polylineCoordinates.addAll(widget.ride.route.polyline.sublist(0, passengerIndex + 1));
+        // 1. Get driving path from driver to nearest route point
+        List<LatLng> drivingPath = await _getDrivingPolyline(
+          _driverPosition!,
+          route[nearestIndex],
+        );
+        // Only add drivingPath if it is a real path (not just [origin, destination])
+        if (drivingPath.length > 1) {
+          polylineCoordinates.addAll(drivingPath);
         } else {
-          polylineCoordinates.addAll(widget.ride.route.polyline); // Fall back to full route if waypoint not found
+          // fallback: add driver and nearest route point
+          polylineCoordinates.add(_driverPosition!);
+          polylineCoordinates.add(route[nearestIndex]);
+        }
+        // Avoid duplicating the nearest route point if the driving path already ends there
+        int startIdx = nearestIndex;
+        if (polylineCoordinates.isNotEmpty &&
+            polylineCoordinates.last.latitude == route[nearestIndex].latitude &&
+            polylineCoordinates.last.longitude ==
+                route[nearestIndex].longitude) {
+          startIdx = nearestIndex + 1;
+        }
+        // 2. Then follow route to passenger waypoint
+        if (passengerIndex != -1 && startIdx <= passengerIndex) {
+          polylineCoordinates.addAll(
+            route.sublist(startIdx, passengerIndex + 1),
+          );
+        } else if (passengerIndex != -1 && startIdx > passengerIndex) {
+          polylineCoordinates.addAll(
+            route.sublist(passengerIndex, startIdx).reversed,
+          );
+        } else if (passengerIndex == -1) {
+          polylineCoordinates.add(_currentPassengerWaypoint!);
         }
       } else {
-        // After pickup, use the full route to the end
+        // After pickup: draw from driver live location to route end
+        polylineCoordinates.add(_driverPosition!);
         polylineCoordinates.addAll(widget.ride.route.polyline);
       }
 
@@ -301,10 +376,75 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
     setState(() {});
   }
 
+  // Helper: fetch driving polyline from Google Directions API
+  Future<List<LatLng>> _getDrivingPolyline(
+    LatLng origin,
+    LatLng destination,
+  ) async {
+    final apiKey = "AIzaSyC8GlueGNwtpZjPUjF6SWnxUHyC5GA82KE";
+    final url =
+        'https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&mode=driving&key=$apiKey';
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['status'] == 'OK' && data['routes'].isNotEmpty) {
+        final points = data['routes'][0]['overview_polyline']['points'];
+        return _decodePolyline(points);
+      }
+    }
+    // fallback to straight line if API fails
+    return [origin, destination];
+  }
+
+  // Helper: decode Google encoded polyline
+  List<LatLng> _decodePolyline(String encoded) {
+    List<LatLng> poly = [];
+    int index = 0, len = encoded.length;
+    int lat = 0, lng = 0;
+
+    while (index < len) {
+      int b, shift = 0, result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lat += dlat;
+
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lng += dlng;
+
+      poly.add(LatLng(lat / 1E5, lng / 1E5));
+    }
+    return poly;
+  }
+
+  // Helper: Haversine distance in meters
+  double _calculateDistance(LatLng a, LatLng b) {
+    const double R = 6371000; // meters
+    final lat1 = a.latitude * 3.141592653589793 / 180.0;
+    final lat2 = b.latitude * 3.141592653589793 / 180.0;
+    final dLat = (b.latitude - a.latitude) * 3.141592653589793 / 180.0;
+    final dLon = (b.longitude - a.longitude) * 3.141592653589793 / 180.0;
+    final h =
+        (sin(dLat / 2) * sin(dLat / 2)) +
+        cos(lat1) * cos(lat2) * (sin(dLon / 2) * sin(dLon / 2));
+    final c = 2 * atan2(sqrt(h), sqrt(1 - h));
+    return R * c;
+  }
+
   void _attemptReconnection() {
-    if (_isWebSocketConnected) return;
+    if (_isWebSocketConnected || _isDisposed) return;
     Timer(const Duration(seconds: 5), () {
-      if (!_isWebSocketConnected) _initializeWebSocket();
+      if (!_isWebSocketConnected && !_isDisposed) _initializeWebSocket();
     });
   }
 
@@ -352,18 +492,20 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
           isLoading
               ? const Center(child: CircularProgressIndicator())
               : GoogleMap(
-                  onMapCreated: (controller) {
-                    mapController = controller;
-                    updateMapTheme(controller);
-                  },
-                  initialCameraPosition: CameraPosition(
-                    target: _currentPassengerWaypoint ?? widget.ride.route.polyline.first,
-                    zoom: 15,
-                  ),
-                  markers: markers,
-                  polylines: polylines,
-                  myLocationEnabled: false,
+                onMapCreated: (controller) {
+                  mapController = controller;
+                  updateMapTheme(controller);
+                },
+                initialCameraPosition: CameraPosition(
+                  target:
+                      _currentPassengerWaypoint ??
+                      widget.ride.route.polyline.first,
+                  zoom: 15,
                 ),
+                markers: markers,
+                polylines: polylines,
+                myLocationEnabled: false,
+              ),
           Positioned(
             bottom: 20,
             left: 16,
@@ -396,11 +538,17 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.directions_car, color: Colors.blue[400], size: 20),
+                      Icon(
+                        Icons.directions_car,
+                        color: Colors.blue[400],
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          driverName != null ? 'Driver: $driverName' : 'Driver: Assigning...',
+                          driverName != null
+                              ? 'Driver: $driverName'
+                              : 'Driver: Assigning...',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -422,11 +570,26 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
                     ),
                     child: Column(
                       children: [
-                        _buildInfoRow(Icons.straighten, 'Distance', distanceText ?? "Calculating...", Colors.orange[400]!),
+                        _buildInfoRow(
+                          Icons.straighten,
+                          'Distance',
+                          distanceText ?? "Calculating...",
+                          Colors.orange[400]!,
+                        ),
                         const SizedBox(height: 8),
-                        _buildInfoRow(Icons.schedule, 'Duration', durationText ?? "Calculating...", Colors.purple[400]!),
+                        _buildInfoRow(
+                          Icons.schedule,
+                          'Duration',
+                          durationText ?? "Calculating...",
+                          Colors.purple[400]!,
+                        ),
                         const SizedBox(height: 8),
-                        _buildInfoRow(Icons.access_time, 'ETA', etaText ?? "Calculating...", Colors.blue[400]!),
+                        _buildInfoRow(
+                          Icons.access_time,
+                          'ETA',
+                          etaText ?? "Calculating...",
+                          Colors.blue[400]!,
+                        ),
                       ],
                     ),
                   ),
@@ -439,7 +602,12 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value, Color iconColor) {
+  Widget _buildInfoRow(
+    IconData icon,
+    String label,
+    String value,
+    Color iconColor,
+  ) {
     return Row(
       children: [
         Icon(icon, color: iconColor, size: 16),

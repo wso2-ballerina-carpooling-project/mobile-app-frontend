@@ -41,6 +41,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
   BitmapDescriptor? _pinIcon;
   BitmapDescriptor? _carIcon;
   LatLng? _previousDriverLocation;
+  bool _isDisposed = false;
 
   @override
   void initState() {
@@ -52,6 +53,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
 
   @override
   void dispose() {
+    _isDisposed = true;
     locationUpdateTimer?.cancel();
     _closeWebSocket();
     mapController.dispose();
@@ -390,9 +392,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
             icon: BitmapDescriptor.defaultMarkerWithHue(
               BitmapDescriptor.hueBlue,
             ),
-            infoWindow: InfoWindow(
-              title: passengerName ?? passenger.address,
-            ),
+            infoWindow: InfoWindow(title: passengerName ?? passenger.address),
           ),
         );
       }
@@ -432,7 +432,9 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
       };
       try {
         _channel!.sink.add(jsonEncode(pickupMessage));
-        print("📤 Sent passenger picked up message: ${jsonEncode(pickupMessage)}");
+        print(
+          "📤 Sent passenger picked up message: ${jsonEncode(pickupMessage)}",
+        );
       } catch (e) {
         _showError('Error sending pickup confirmation: $e');
         _isWebSocketConnected = false;
@@ -468,11 +470,11 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
         (message) => _handleWebSocketMessage(message),
         onError: (error) {
           _isWebSocketConnected = false;
-          _attemptReconnection();
+          if (!_isDisposed) _attemptReconnection();
         },
         onDone: () {
           _isWebSocketConnected = false;
-          _attemptReconnection();
+          if (!_isDisposed) _attemptReconnection();
         },
       );
 
@@ -575,9 +577,9 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
   }
 
   void _attemptReconnection() {
-    if (_isWebSocketConnected) return;
+    if (_isWebSocketConnected || _isDisposed) return;
     Timer(const Duration(seconds: 5), () {
-      if (!_isWebSocketConnected) _initializeWebSocket();
+      if (!_isWebSocketConnected && !_isDisposed) _initializeWebSocket();
     });
   }
 
@@ -625,23 +627,24 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
           isLoading
               ? const Center(child: CircularProgressIndicator())
               : GoogleMap(
-                  onMapCreated: (controller) {
-                    mapController = controller;
-                    updateMapTheme(controller);
-                  },
-                  initialCameraPosition: CameraPosition(
-                    target: currentPosition != null
-                        ? LatLng(
+                onMapCreated: (controller) {
+                  mapController = controller;
+                  updateMapTheme(controller);
+                },
+                initialCameraPosition: CameraPosition(
+                  target:
+                      currentPosition != null
+                          ? LatLng(
                             currentPosition!.latitude,
                             currentPosition!.longitude,
                           )
-                        : widget.ride.route.polyline.first,
-                    zoom: 14.0,
-                  ),
-                  markers: markers,
-                  polylines: polylines,
-                  myLocationEnabled: true,
+                          : widget.ride.route.polyline.first,
+                  zoom: 14.0,
                 ),
+                markers: markers,
+                polylines: polylines,
+                myLocationEnabled: true,
+              ),
           Positioned(
             bottom: nextPassenger != null ? 90 : 20,
             left: 16,
