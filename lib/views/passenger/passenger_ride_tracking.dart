@@ -38,8 +38,8 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
   LatLng? _currentPassengerWaypoint;
   bool _isPassengerPickedUp = false;
 
-  // Current date and time: 06:27 PM +0530, Thursday, July 17, 2025
-  final DateTime _currentTime = DateTime(2025, 7, 17, 18, 27);
+  // Current date and time: 08:14 PM +0530, Thursday, July 17, 2025
+  final DateTime _currentTime = DateTime(2025, 7, 17, 20, 14);
 
   @override
   void initState() {
@@ -202,6 +202,10 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
         'type': 'passenger_connected',
         'passenger_id': widget.passengerId,
         'driver_id': widget.ride.driverId,
+        'waypoint': {
+          'latitude': _currentPassengerWaypoint!.latitude,
+          'longitude': _currentPassengerWaypoint!.longitude,
+        },
       };
       print("📤 Sending initial connection message: ${jsonEncode(message)}");
       _channel!.sink.add(jsonEncode(message));
@@ -222,6 +226,11 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
               _fetchDrivingRoute(_driverPosition!, _currentPassengerWaypoint!);
               _animateCameraToPosition(_driverPosition!);
               _updatePolyline();
+            } else if (_driverPosition != null && _isPassengerPickedUp) {
+              _updateMarkers(widget.ride.route.polyline.last);
+              _fetchDrivingRoute(_driverPosition!, widget.ride.route.polyline.last);
+              _animateCameraToPosition(_driverPosition!);
+              _updatePolyline();
             }
           });
           break;
@@ -239,7 +248,7 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
             });
           }
           break;
-        case 'passenger_picked_up':
+        case 'driver_confirmed_pickup':
           setState(() {
             _isPassengerPickedUp = true;
             _updateMarkers(widget.ride.route.polyline.last);
@@ -275,7 +284,7 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
           polylineCoordinates.addAll(widget.ride.route.polyline); // Fall back to full route if waypoint not found
         }
       } else {
-        // After pickup, use the full route
+        // After pickup, use the full route to the end
         polylineCoordinates.addAll(widget.ride.route.polyline);
       }
 
@@ -306,7 +315,7 @@ class _PassengerRideTrackingState extends State<PassengerRideTracking> {
           'type': 'passenger_disconnected',
           'passenger_id': widget.passengerId,
           'driver_id': widget.ride.driverId,
-          'timestamp': DateTime.now().toIso8601String(),
+          'timestamp': _currentTime.toIso8601String(),
         };
         _channel!.sink.add(jsonEncode(disconnectMessage));
         _channel!.sink.close();

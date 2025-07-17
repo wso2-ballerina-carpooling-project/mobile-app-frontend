@@ -247,7 +247,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
           nextPassenger != null) {
         if (passengerDetails[nextPassenger!.passengerId] == null) {
           await _fetchPassengerDetails(nextPassenger!.passengerId);
-        } else {}
+        }
         if (waypointAddresses[nextPassenger!.passengerId] == null) {
           await _fetchWaypointAddress(
             nextPassenger!.passengerId,
@@ -347,6 +347,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
       setState(() {});
     }
   }
+
   double _calculateRotation(LatLng start, LatLng end) {
     double latDiff = end.latitude - start.latitude;
     double lngDiff = end.longitude - start.longitude;
@@ -354,27 +355,24 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
     return angle * 180 / pi;
   }
 
-
-
   void _addDriverMarker(LatLng position) {
     markers.clear();
     double rotation = 0;
 
     if (_previousDriverLocation != null) {
-        rotation =
-            _calculateRotation(_previousDriverLocation!, position);
-      }
+      rotation = _calculateRotation(_previousDriverLocation!, position);
+    }
     markers.add(
       Marker(
         markerId: const MarkerId('driver'),
         position: position,
         icon: _carIcon!,
         anchor: const Offset(0.5, 0.5),
-        rotation: rotation
+        rotation: rotation,
       ),
     );
     _previousDriverLocation = position;
-    
+
     markers.add(
       Marker(
         markerId: const MarkerId('end'),
@@ -393,8 +391,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
               BitmapDescriptor.hueBlue,
             ),
             infoWindow: InfoWindow(
-              title:
-                  passengerName ?? passenger.address,
+              title: passengerName ?? passenger.address,
             ),
           ),
         );
@@ -425,6 +422,25 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
   }
 
   void _confirmPassengerPickup(Passenger passenger) {
+    if (_channel != null && _isWebSocketConnected) {
+      final pickupMessage = {
+        'type': 'passenger_picked_up',
+        'driver_id': widget.ride.driverId,
+        'ride_id': widget.ride.rideId,
+        'passenger_id': passenger.passengerId,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+      try {
+        _channel!.sink.add(jsonEncode(pickupMessage));
+        print("📤 Sent passenger picked up message: ${jsonEncode(pickupMessage)}");
+      } catch (e) {
+        _showError('Error sending pickup confirmation: $e');
+        _isWebSocketConnected = false;
+        _attemptReconnection();
+        return;
+      }
+    }
+
     setState(() {
       pickedUpPassengers.add(passenger);
       nextPassenger = _getNearestPassenger(
@@ -455,8 +471,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
           _attemptReconnection();
         },
         onDone: () {
-          _isWebSocketConnected =
-              false; // ❗ you had this set to true mistakenly
+          _isWebSocketConnected = false;
           _attemptReconnection();
         },
       );
@@ -464,7 +479,6 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
       _isWebSocketConnected = true;
       _startHeartbeat();
 
-      /// ✅ Delay sending the initial message to give handshake time
       await Future.delayed(Duration(milliseconds: 300));
       _sendInitialConnectionMessage();
 
@@ -516,6 +530,9 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
       final data = jsonDecode(message);
       switch (data['type']) {
         case 'location_received':
+          break;
+        case 'passenger_picked_up_ack':
+          print("✅ Received pickup acknowledgment: ${jsonEncode(data)}");
           break;
       }
     } catch (e) {
@@ -608,24 +625,23 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
           isLoading
               ? const Center(child: CircularProgressIndicator())
               : GoogleMap(
-                onMapCreated: (controller) {
-                  mapController = controller;
-                  updateMapTheme(controller);
-                },
-                initialCameraPosition: CameraPosition(
-                  target:
-                      currentPosition != null
-                          ? LatLng(
+                  onMapCreated: (controller) {
+                    mapController = controller;
+                    updateMapTheme(controller);
+                  },
+                  initialCameraPosition: CameraPosition(
+                    target: currentPosition != null
+                        ? LatLng(
                             currentPosition!.latitude,
                             currentPosition!.longitude,
                           )
-                          : widget.ride.route.polyline.first,
-                  zoom: 20,
+                        : widget.ride.route.polyline.first,
+                    zoom: 14.0,
+                  ),
+                  markers: markers,
+                  polylines: polylines,
+                  myLocationEnabled: true,
                 ),
-                markers: markers,
-                polylines: polylines,
-                myLocationEnabled: true,
-              ),
           Positioned(
             bottom: nextPassenger != null ? 90 : 20,
             left: 16,
@@ -633,7 +649,6 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                // Modern gradient background
                 gradient: LinearGradient(
                   colors: [Colors.grey[900]!, Colors.black87],
                   begin: Alignment.topLeft,
@@ -656,13 +671,11 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
               ),
               child: Row(
                 children: [
-                  // Left side - Main content
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Destination with icon
                         Row(
                           children: [
                             Icon(
@@ -687,8 +700,6 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                             ),
                           ],
                         ),
-
-                        // Passenger info
                         if (passengerName != null) ...[
                           const SizedBox(height: 8),
                           Row(
@@ -713,10 +724,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                             ],
                           ),
                         ],
-
                         const SizedBox(height: 12),
-
-                        // Trip details in a more organized way
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
@@ -755,8 +763,6 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                       ],
                     ),
                   ),
-
-                  // Right side - Call button
                   if (nextPassenger != null) ...[
                     const SizedBox(width: 16),
                     Container(
@@ -774,7 +780,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                       child: IconButton(
                         icon: const Icon(Icons.call, color: Colors.white),
                         onPressed: () {
-                          //_call()
+                          // _call()
                         },
                         tooltip: 'Call Passenger',
                       ),
@@ -784,8 +790,6 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
               ),
             ),
           ),
-
-          // Enhanced pickup confirmation button
           if (nextPassenger != null)
             Positioned(
               bottom: 20,
