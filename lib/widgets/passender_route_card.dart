@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_frontend/models/RideData.dart';
 import 'package:mobile_frontend/views/passenger/passenger_ride_tracking.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RouteCardPassenger extends StatefulWidget {
   final String startLocation;
@@ -10,6 +12,7 @@ class RouteCardPassenger extends StatefulWidget {
   final String time;
   final bool isRideStarted;
   final bool isGoingToWork;
+  final Ride ride;
   final Function()? onTrackPressed;
 
   const RouteCardPassenger({
@@ -19,6 +22,7 @@ class RouteCardPassenger extends StatefulWidget {
     required this.endLocation,
     required this.endAddress,
     required this.date,
+    required this.ride,
     required this.time,
     this.isRideStarted = true,
     this.isGoingToWork = true,
@@ -33,10 +37,12 @@ class _RouteCardPassengerState extends State<RouteCardPassenger>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _animation;
+  String? passengerId;
 
   @override
   void initState() {
     super.initState();
+    _loadPassengerId();
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
@@ -69,25 +75,41 @@ class _RouteCardPassengerState extends State<RouteCardPassenger>
     super.dispose();
   }
 
+  Future<void> _loadPassengerId() async {
+    passengerId = await getPassengerId();
+    setState(() {}); // Update the UI if needed
+  }
+
   void _handleCardTap() {
     if (widget.isRideStarted) {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (BuildContext context) {
-          return const PassengerRideTracking();
-        },
-      );
-      if (widget.onTrackPressed != null) {
-        widget.onTrackPressed!();
-      }
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (context) => PassengerRideTracking(
+                ride: widget.ride, // Use the ride passed to the widget
+                passengerId: passengerId!, // Ensure passengerId is provided
+              ),
+        ),
+      ).then((_) {
+        // Callback after the page is popped (e.g., when user navigates back)
+        if (widget.onTrackPressed != null) {
+          widget.onTrackPressed!();
+        }
+      });
     }
+  }
+
+  Future<String?> getPassengerId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('id'); // Retrieve the ID
   }
 
   @override
   Widget build(BuildContext context) {
-    const cardColor = Color(0xFFF9FAFB); // Light gray background for a clean look
+    const cardColor = Color(
+      0xFFF9FAFB,
+    ); // Light gray background for a clean look
     const primaryColor = Color(0xFF1E40AF); // Professional blue
     const infoBgColor = Color(0xFFE0E7FF); // Soft blue for info chips
     const textColor = Colors.black87; // Darker text for readability
@@ -116,12 +138,13 @@ class _RouteCardPassengerState extends State<RouteCardPassenger>
                     offset: const Offset(0, 0),
                   ),
               ],
-              border: widget.isRideStarted
-                  ? Border.all(
-                      color: primaryColor.withOpacity(_animation.value),
-                      width: 2,
-                    )
-                  : null,
+              border:
+                  widget.isRideStarted
+                      ? Border.all(
+                        color: primaryColor.withOpacity(_animation.value),
+                        width: 2,
+                      )
+                      : null,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,8 +154,10 @@ class _RouteCardPassengerState extends State<RouteCardPassenger>
                   children: [
                     // Date and time on the left
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: infoBgColor,
                         borderRadius: BorderRadius.circular(8),
@@ -168,8 +193,10 @@ class _RouteCardPassengerState extends State<RouteCardPassenger>
                     ),
                     // Back to Work/Home on the right
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: infoBgColor,
                         borderRadius: BorderRadius.circular(8),

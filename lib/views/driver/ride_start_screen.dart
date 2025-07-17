@@ -38,12 +38,15 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
   Timer? _heartbeatTimer;
   Map<String, dynamic> passengerDetails = {};
   Map<String, String> waypointAddresses = {};
-
+  BitmapDescriptor? _pinIcon;
+  BitmapDescriptor? _carIcon;
+  LatLng? _previousDriverLocation;
 
   @override
   void initState() {
     super.initState();
     _checkLocationPermission();
+    _loadIcons();
     _initializeWebSocket();
   }
 
@@ -344,29 +347,39 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
       setState(() {});
     }
   }
+  double _calculateRotation(LatLng start, LatLng end) {
+    double latDiff = end.latitude - start.latitude;
+    double lngDiff = end.longitude - start.longitude;
+    double angle = atan2(lngDiff, latDiff);
+    return angle * 180 / pi;
+  }
+
+
 
   void _addDriverMarker(LatLng position) {
     markers.clear();
+    double rotation = 0;
+
+    if (_previousDriverLocation != null) {
+        rotation =
+            _calculateRotation(_previousDriverLocation!, position);
+      }
     markers.add(
       Marker(
         markerId: const MarkerId('driver'),
         position: position,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow),
+        icon: _carIcon!,
+        anchor: const Offset(0.5, 0.5),
+        rotation: rotation
       ),
     );
-    markers.add(
-      Marker(
-        markerId: const MarkerId('start'),
-        position: widget.ride.route.polyline.first,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-        infoWindow: InfoWindow(title: widget.ride.pickupLocation),
-      ),
-    );
+    _previousDriverLocation = position;
+    
     markers.add(
       Marker(
         markerId: const MarkerId('end'),
         position: widget.ride.route.polyline.last,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        icon: _pinIcon!,
         infoWindow: InfoWindow(title: widget.ride.dropoffLocation),
       ),
     );
@@ -381,7 +394,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
             ),
             infoWindow: InfoWindow(
               title:
-                  waypointAddresses[passenger.passengerId] ?? passenger.address,
+                  passengerName ?? passenger.address,
             ),
           ),
         );
@@ -428,53 +441,56 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
   }
 
   Future<void> _initializeWebSocket() async {
-  try {
-    _channel = WebSocketChannel.connect(
-      Uri.parse("wss://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/websocket/websocket/v1.0"),
-    );
+    try {
+      _channel = WebSocketChannel.connect(
+        Uri.parse(
+          "wss://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/websocket/websocket/v1.0",
+        ),
+      );
 
-    _channel!.stream.listen(
-      (message) => _handleWebSocketMessage(message),
-      onError: (error) {
-        _isWebSocketConnected = false;
-        _attemptReconnection();
-      },
-      onDone: () {
-        _isWebSocketConnected = false; // ❗ you had this set to true mistakenly
-        _attemptReconnection();
-      },
-    );
+      _channel!.stream.listen(
+        (message) => _handleWebSocketMessage(message),
+        onError: (error) {
+          _isWebSocketConnected = false;
+          _attemptReconnection();
+        },
+        onDone: () {
+          _isWebSocketConnected =
+              false; // ❗ you had this set to true mistakenly
+          _attemptReconnection();
+        },
+      );
 
-    _isWebSocketConnected = true;
-    _startHeartbeat();
+      _isWebSocketConnected = true;
+      _startHeartbeat();
 
-    /// ✅ Delay sending the initial message to give handshake time
-    await Future.delayed(Duration(milliseconds: 300));
-    _sendInitialConnectionMessage();
+      /// ✅ Delay sending the initial message to give handshake time
+      await Future.delayed(Duration(milliseconds: 300));
+      _sendInitialConnectionMessage();
 
-    setState(() {});
-  } catch (e) {
-    _isWebSocketConnected = false;
-    _attemptReconnection();
+      setState(() {});
+    } catch (e) {
+      _isWebSocketConnected = false;
+      _attemptReconnection();
+    }
   }
-}
-
 
   void _sendInitialConnectionMessage() async {
-  if (_channel != null && _isWebSocketConnected) {
-    final message = {
-      'type': 'driver_connected',
-      'driver_id': widget.ride.driverId,
-      'ride_id': widget.ride.rideId,
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-    print("📤 Sending initial connection message: ${jsonEncode(message)}");
-    _channel!.sink.add(jsonEncode(message));
-  } else {
-    print("⚠️ WebSocket not connected, cannot send initial connection message");
+    if (_channel != null && _isWebSocketConnected) {
+      final message = {
+        'type': 'driver_connected',
+        'driver_id': widget.ride.driverId,
+        'ride_id': widget.ride.rideId,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+      print("📤 Sending initial connection message: ${jsonEncode(message)}");
+      _channel!.sink.add(jsonEncode(message));
+    } else {
+      print(
+        "⚠️ WebSocket not connected, cannot send initial connection message",
+      );
+    }
   }
-}
-
 
   void _startHeartbeat() {
     _heartbeatTimer?.cancel();
@@ -505,6 +521,18 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
     } catch (e) {
       debugPrint('Error handling WebSocket message: $e');
     }
+  }
+
+  Future<void> _loadIcons() async {
+    const imageConfiguration = ImageConfiguration(size: Size(48, 48));
+    _pinIcon = await BitmapDescriptor.asset(
+      imageConfiguration,
+      'assets/pin.png',
+    );
+    _carIcon = await BitmapDescriptor.asset(
+      imageConfiguration,
+      'assets/car-d.png',
+    );
   }
 
   void _sendLocationUpdate(LatLng location, {double? speed, double? heading}) {
@@ -592,7 +620,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                             currentPosition!.longitude,
                           )
                           : widget.ride.route.polyline.first,
-                  zoom: 30,
+                  zoom: 20,
                 ),
                 markers: markers,
                 polylines: polylines,
