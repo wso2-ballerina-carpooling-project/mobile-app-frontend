@@ -19,6 +19,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _confirmPasswordController = TextEditingController();
 
   bool _agreedToTerms = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
@@ -71,7 +73,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
 
-    // Collect user data
     final userData = {
       'firstName': _firstNameController.text,
       'lastName': _lastNameController.text,
@@ -80,16 +81,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
       'password': _passwordController.text,
     };
 
-    // Navigate to RoleSelectionScreen
     Navigator.pushNamed(context, '/role', arguments: userData);
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-
     return Scaffold(
       backgroundColor: primaryColor,
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         backgroundColor: primaryColor,
         elevation: 0,
@@ -107,132 +106,145 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
         centerTitle: true,
       ),
-      body: Stack(
-        children: [
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: screenSize.height * 0.85,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: bgcolor,
-                borderRadius: BorderRadius.only(topLeft: Radius.circular(40)),
-              ),
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      CustomInputField(
-                        label: 'First name',
-                        controller: _firstNameController,
-                        hintText: 'John',
-                      ),
-                      const SizedBox(height: 10),
-                      CustomInputField(
-                        label: 'Last name',
-                        controller: _lastNameController,
-                        hintText: 'Wick',
-                      ),
-                      const SizedBox(height: 10),
-                      CustomInputField(
-                        label: 'Email',
-                        controller: _emailController,
-                        hintText: 'username@web02.com',
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                      const SizedBox(height: 10),
-                      CustomInputField(
-                        label: 'Phone',
-                        controller: _phoneController,
-                        hintText: '071 929 7961',
-                        keyboardType: TextInputType.phone,
-                      ),
-                      const SizedBox(height: 10),
-                      CustomInputField(
-                        label: 'Password',
-                        controller: _passwordController,
-                        isPassword: true,
-                        hintText: '••••••••••••••••••',
-                      ),
-                      const SizedBox(height: 10),
-                      CustomInputField(
-                        label: 'Confirm password',
-                        controller: _confirmPasswordController,
-                        isPassword: true,
-                        hintText: '••••••••••••••••••',
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16.0),
-                        child: Row(
-                          children: [
-                            Checkbox(
-                              value: _agreedToTerms,
-                              onChanged: (value) {
-                                setState(() {
-                                  _agreedToTerms = value ?? false;
-                                });
-                              },
-                              fillColor: WidgetStateProperty.resolveWith<Color>(
-                                (Set<WidgetState> states) {
-                                  if (states.contains(WidgetState.selected)) {
-                                    return Colors.blue;
-                                  }
-                                  return Colors.grey;
-                                },
-                              ),
-                            ),
-                            const Text(
-                              'I agree term and condition',
-                              style: TextStyle(
-                                color: Colors.black87,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      CustomButton(
-                        text: 'Sign Up',
-                        onPressed: _validateAndProceed,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text(
-                              'Already have an account? ',
-                              style: TextStyle(
-                                color: Colors.black87,
-                                fontSize: 14,
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.pushReplacementNamed(context, '/login');
-                              },
-                              child: const Text(
-                                'Sign in here',
-                                style: TextStyle(
-                                  color: linkColor,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: bgcolor,
+              borderRadius: BorderRadius.only(topLeft: Radius.circular(40)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  CustomInputField(
+                    label: 'First name',
+                    controller: _firstNameController,
+                    hintText: 'John',
                   ),
-                ),
+                  const SizedBox(height: 10),
+                  CustomInputField(
+                    label: 'Last name',
+                    controller: _lastNameController,
+                    hintText: 'Wick',
+                  ),
+                  const SizedBox(height: 10),
+                  CustomInputField(
+                    label: 'Email',
+                    controller: _emailController,
+                    hintText: 'username@web02.com',
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height: 10),
+                  CustomInputField(
+                    label: 'Phone',
+                    controller: _phoneController,
+                    hintText: '071 929 7961',
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 10),
+                  CustomInputField(
+                    label: 'Password',
+                    controller: _passwordController,
+                    isPassword: _obscurePassword,
+                    hintText: '••••••••••••••••••',
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  CustomInputField(
+                    label: 'Confirm password',
+                    controller: _confirmPasswordController,
+                    isPassword: _obscureConfirmPassword,
+                    hintText: '••••••••••••••••••',
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscureConfirmPassword = !_obscureConfirmPassword;
+                        });
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Row(
+                      children: [
+                        Checkbox(
+                          value: _agreedToTerms,
+                          onChanged: (value) {
+                            setState(() {
+                              _agreedToTerms = value ?? false;
+                            });
+                          },
+                          fillColor: WidgetStateProperty.resolveWith<Color>(
+                            (Set<WidgetState> states) {
+                              if (states.contains(WidgetState.selected)) {
+                                return Colors.blue;
+                              }
+                              return Colors.grey;
+                            },
+                          ),
+                        ),
+                        const Text(
+                          'I agree term and condition',
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  CustomButton(
+                    text: 'Sign Up',
+                    onPressed: _validateAndProceed,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Already have an account? ',
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontSize: 14,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pushReplacementNamed(context, '/login');
+                          },
+                          child: const Text(
+                            'Sign in here',
+                            style: TextStyle(
+                              color: linkColor,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }

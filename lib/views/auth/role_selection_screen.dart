@@ -3,10 +3,17 @@ import 'package:mobile_frontend/config/constant.dart';
 import 'package:mobile_frontend/widgets/custom_button.dart';
 import 'package:mobile_frontend/services/auth_services.dart';
 
-class RoleSelectionScreen extends StatelessWidget {
+class RoleSelectionScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
 
   const RoleSelectionScreen({super.key, required this.userData});
+
+  @override
+  State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
+}
+
+class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
+  bool _isLoading = false; // Track loading state
 
   @override
   Widget build(BuildContext context) {
@@ -61,16 +68,21 @@ class RoleSelectionScreen extends StatelessWidget {
                         Navigator.pushNamed(
                           context,
                           '/driver-details',
-                          arguments: userData,
+                          arguments: widget.userData,
                         );
                       },
                     ),
                     const SizedBox(height: 20),
                     CustomButton(
                       text: 'Passenger',
-                      onPressed: () {
-                        // Send data to backend for passenger
-                        _registerUser(context, {...userData, 'role': 'passenger'});
+                      onPressed: () async {
+                        setState(() {
+                          _isLoading = true; // Set loading state to true before API call
+                        });
+                        await _registerUser(context, {...widget.userData, 'role': 'passenger'});
+                        setState(() {
+                          _isLoading = false; // Reset loading state after API call
+                        });
                       },
                     ),
                   ],
@@ -78,6 +90,15 @@ class RoleSelectionScreen extends StatelessWidget {
               ),
             ),
           ),
+          if (_isLoading)
+            const Opacity(
+              opacity: 0.8,
+              child: ModalBarrier(dismissible: false, color: Colors.black),
+            ),
+          if (_isLoading)
+            const Center(
+              child: CircularProgressIndicator(color: Colors.blue),
+            ),
         ],
       ),
     );

@@ -38,7 +38,8 @@ class CustomInputField extends StatelessWidget {
           ),
         ],
       ),
-        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 14.0),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 14.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -51,21 +52,27 @@ class CustomInputField extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            TextFormField(
-              controller: controller,
-              obscureText: isPassword,
-              validator: validator,
-              keyboardType: keyboardType,
-              onChanged: onChanged,
-              style: const TextStyle(fontSize: 18),
-              decoration: InputDecoration(
-                hintText: hintText,
-                hintStyle: TextStyle(color: Colors.grey[500]),
-                border: InputBorder.none,
-                suffixIcon: suffixIcon,
-                contentPadding: EdgeInsets.zero,
-                isDense: true,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: controller,
+                    obscureText: isPassword,
+                    validator: validator,
+                    keyboardType: keyboardType,
+                    onChanged: onChanged,
+                    style: const TextStyle(fontSize: 18),
+                    decoration: InputDecoration(
+                      hintText: hintText,
+                      hintStyle: TextStyle(color: Colors.grey[500]),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ),
+                if (suffixIcon != null) suffixIcon!,
+              ],
             ),
           ],
         ),
