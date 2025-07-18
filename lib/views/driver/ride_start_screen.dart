@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:mobile_frontend/views/common/call_screen.dart';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:mobile_frontend/config/constant.dart';
@@ -783,7 +784,19 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                       child: IconButton(
                         icon: const Icon(Icons.call, color: Colors.white),
                         onPressed: () {
-                          // _call()
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => CallingScreen(
+                                    passengerName: 'Nimal',
+                                    callerName: "Gayan",
+                                    callerPhone: "+94719297961",
+                                    passengerPhone: '+94719297961',
+                                    userType: 'passenger',
+                                  ),
+                            ),
+                          );
                         },
                         tooltip: 'Call Passenger',
                       ),

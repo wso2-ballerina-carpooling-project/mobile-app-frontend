@@ -365,7 +365,7 @@ class _PassengerHomeState extends State<PassengerHome> {
                                               endAddress: ride.dropoffLocation,
                                               date: ride.date,
                                               time: ride.startTime,
-                                              isRideStarted: ride.status == 'active',
+                                              isRideStarted: ride.status == 'start',
                                               isGoingToWork: ride.waytowork,
                                               onTrackPressed: trackRide,
                                               ride: ride,
