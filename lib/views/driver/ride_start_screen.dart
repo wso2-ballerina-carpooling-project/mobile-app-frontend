@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:mobile_frontend/services/call_service.dart';
 import 'package:mobile_frontend/views/common/call_screen.dart';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -20,6 +21,8 @@ class DriverRideTracking extends StatefulWidget {
 }
 
 class _DriverRideTrackingState extends State<DriverRideTracking> {
+   final CallService _callService = CallService();
+  final String currentUserId = ''; 
   late GoogleMapController mapController;
   Set<Marker> markers = {};
   Set<Polyline> polylines = {};
@@ -783,20 +786,30 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                       ),
                       child: IconButton(
                         icon: const Icon(Icons.call, color: Colors.white),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (context) => CallingScreen(
-                                    passengerName: 'Nimal',
-                                    callerName: "Gayan",
-                                    callerPhone: "+94719297961",
-                                    passengerPhone: '+94719297961',
-                                    userType: 'passenger',
-                                  ),
-                            ),
-                          );
+                        onPressed: () async {
+                          String receiverId = 'receiver-user-id';
+                          try {
+                            final callData = await _callService.initiateCall(
+                              currentUserId,
+                              receiverId,
+                            );
+                            Navigator.pushNamed(
+                              context,
+                              '/call',
+                              arguments: {
+                                'callId': callData['callId'],
+                                'channelName': callData['channelName'],
+                                'agoraToken': callData['agoraToken'],
+                                'callerId': currentUserId,
+                              },
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error initiating call: $e'),
+                              ),
+                            );
+                          }
                         },
                         tooltip: 'Call Passenger',
                       ),

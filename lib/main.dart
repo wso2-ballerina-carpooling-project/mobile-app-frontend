@@ -2,10 +2,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile_frontend/services/local_notification.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'config/routes.dart';
-import 'config/theme.dart';
+import 'package:mobile_frontend/config/routes.dart';
+import 'package:mobile_frontend/config/theme.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('🔕 Handling background message: ${message.messageId}');
@@ -23,7 +24,9 @@ void main() async {
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   await requestLocationPermission();
   await Firebase.initializeApp();
-  await setupFirebaseMessaging(); 
+  await setupFirebaseMessaging();
+  LocalNotificationsService notificationsService = LocalNotificationsService();
+  await notificationsService.init();
 
   runApp(const MyCarpoolApp());
 }
@@ -36,16 +39,13 @@ Future<void> requestLocationPermission() async {
   }
 
   if (status.isPermanentlyDenied) {
-    // Open app settings if user blocked it forever
     await openAppSettings();
   }
-
 }
 
 Future<void> setupFirebaseMessaging() async {
   FirebaseMessaging messaging = FirebaseMessaging.instance;
 
-  // Request permissions (important for iOS and Android 13+)
   NotificationSettings settings = await messaging.requestPermission(
     alert: true,
     badge: true,
@@ -60,7 +60,7 @@ Future<void> setupFirebaseMessaging() async {
 
   String? token = await messaging.getToken();
   final prefs = await SharedPreferences.getInstance();
-  if(token is String){
+  if (token is String) {
     await prefs.setString('fcm', token);
   }
   print('Device FCM Token: $token');
@@ -72,7 +72,6 @@ Future<void> setupFirebaseMessaging() async {
 
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     print('User tapped on notification');
-    // Navigate to a screen, show dialog, etc.
   });
 }
 

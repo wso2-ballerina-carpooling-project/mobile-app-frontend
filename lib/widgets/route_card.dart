@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/models/RideData.dart';
-import 'package:mobile_frontend/views/driver/ride_start_screen.dart';
+import 'package:mobile_frontend/services/call_service.dart';
+
+
+final CallService _callService = CallService();
+final String currentUserId = 'z7CHr0euj1Rend142Azo';
 
 class RouteCard extends StatelessWidget {
   final String startTime;
@@ -28,6 +32,8 @@ class RouteCard extends StatelessWidget {
     this.onStartPressed,
   });
 
+
+  
   String _calculateTotalCost() {
     if (passengers.isEmpty) {
       return 'LKR 0';
@@ -166,14 +172,41 @@ class RouteCard extends StatelessWidget {
                   ),
                   minimumSize: const Size(80, 30),
                 ),
-                onPressed: () {
+                onPressed: () async{
+
+                String receiverId = 'IYpS3gS85Za53KrEG5Y3';
+                try {
+                  final callData = await _callService.initiateCall(currentUserId, receiverId);
+                  Navigator.pushNamed(
+                    context,
+                    '/call',
+                    arguments: {
+                      'callId': callData['callId'],
+                      'channelName': callData['channelName'],
+                      'callerId': currentUserId,
+                    },
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error initiating call: $e')),
+                  );
+                }
                   // Navigate to RideStartScreen with rideId
-                  Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DriverRideTracking(ride: ride),
-      ),
-    );
+                  // Navigator.push(
+                  //   context,
+                  //   MaterialPageRoute(
+                  //     builder:
+                  //         (context) => //DriverRideTracking(ride: ride),
+                  //             CallingScreen(
+                  //           callerName: 'Driver John',
+                  //           callerPhone: '0719297961',
+                  //           passengerPhone: '0763678595',
+                  //           passengerName: 'Nalaka Dinesh',
+                  //           userType: 'driver',
+                  //           channelName: 'testChannel123',
+                  //         ),
+                  //   ),
+                  // );
                 },
                 child: const Text(
                   'Start',

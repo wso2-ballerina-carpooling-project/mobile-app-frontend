@@ -53,7 +53,8 @@ dependencies:
   url_launcher: ^6.3.2
   firebase_core: ^3.15.1
   location: ^8.0.1
-  twilio_voice_flutter: ^0.0.6
+  agora_rtc_engine: ^6.5.2
+  flutter_local_notifications: ^18.0.1
   
 dependency_overrides:
   flutter_keyboard_visibility:
