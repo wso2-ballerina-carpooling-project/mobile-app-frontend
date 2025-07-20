@@ -4,26 +4,51 @@ import 'dart:convert';
 
 class CallService {
   RtcEngine? _engine;
-  final String appId = 'your-agora-app-id'; // Replace with your Agora App ID
-  final String backendUrl = 'http://your-ballerina-backend:9090/api';
+  final String appId = '32f8dd6fbfad4a18986c278345678b41'; // Replace with your Agora App ID
+  final String backendUrl = 'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
 
-  Future<void> initAgora(String channelName) async {
-    _engine = createAgoraRtcEngine();
-    await _engine!.initialize(RtcEngineContext(
-      appId: appId,
-      channelProfile: ChannelProfileType.channelProfileCommunication,
-    ));
+  Future<void> initAgora(String channelName, String token) async {
+    try {
+      print('Initializing Agora with channel: $channelName');
+      _engine = createAgoraRtcEngine();
+      await _engine!.initialize(RtcEngineContext(
+        appId: appId,
+        channelProfile: ChannelProfileType.channelProfileCommunication,
+      ));
 
-    await _engine!.enableAudio();
-    await _engine!.joinChannel(
-      token: '', // No token for testing
-      channelId: channelName,
-      uid: 0,
-      options: ChannelMediaOptions(),
-    );
+      // Set up Agora event handlers for debugging
+      _engine!.registerEventHandler(
+        RtcEngineEventHandler(
+          onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
+            print('Joined channel ${connection.channelId} with uid ${connection.localUid}');
+          },
+          onError: (ErrorCodeType err, String msg) {
+            print('Agora error: $err, $msg');
+          },
+          onConnectionStateChanged: (RtcConnection connection, ConnectionStateType state, ConnectionChangedReasonType reason) {
+            print('Connection state changed: $state, reason: $reason');
+          },
+        ),
+      );
+
+      await _engine!.enableAudio();
+      await _engine!.joinChannel(
+        token: token, // No token for testing
+        channelId: channelName,
+        uid: 0,
+        options: ChannelMediaOptions(
+          clientRoleType: ClientRoleType.clientRoleBroadcaster,
+          channelProfile: ChannelProfileType.channelProfileCommunication,
+        ),
+      );
+      print('Join channel request sent for $channelName');
+    } catch (e) {
+      print('Failed to initialize Agora: $e');
+      rethrow;
+    }
   }
 
-  Future<Map<String, String>> initiateCall(String callerId, String receiverId) async {
+  Future<Map<String, dynamic>> initiateCall(String callerId, String receiverId) async {
     final response = await http.post(
       Uri.parse('$backendUrl/initiateCall'),
       headers: {'Content-Type': 'application/json'},
@@ -34,7 +59,7 @@ class CallService {
     );
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body) as Map<String, String>;
+      return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
       throw Exception('Failed to initiate call: ${response.body}');
     }

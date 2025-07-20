@@ -11,6 +11,7 @@ import 'package:mobile_frontend/config/theme.dart';
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('🔕 Handling background message: ${message.messageId}');
 }
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +28,8 @@ void main() async {
   await setupFirebaseMessaging();
   LocalNotificationsService notificationsService = LocalNotificationsService();
   await notificationsService.init();
+
+  RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
 
   runApp(const MyCarpoolApp());
 }
@@ -69,21 +72,57 @@ Future<void> setupFirebaseMessaging() async {
     print('🔔 Received message in foreground: ${message.notification?.title}');
     print('🔔 Message body: ${message.notification?.body}');
   });
-
-  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-    print('User tapped on notification');
+ FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
+    print('User tapped on notification: ${message.data}');
+    if (message.data['callId'] != null) {
+      await _navigateToCallScreen(message.data);
+    }
   });
 }
 
+Future<void> _navigateToCallScreen(Map<String, dynamic> data) async {
+  // Retry navigation until navigator is available
+  const maxRetries = 10;
+  var retries = 0;
+  while (retries < maxRetries) {
+    final navigator = navigatorKey.currentState;
+    if (navigator != null) {
+      navigator.pushNamed(
+        '/call',
+        arguments: {
+          'callId': data['callId'],
+          'channelName': data['channelName'],
+          'callerName': data['callerName'] ?? data['callerId'] ?? 'Unknown',
+        },
+      );
+      print('Navigation to CallScreen successful');
+      return;
+    }
+    print('Navigator not available, retrying (${retries + 1}/$maxRetries)...');
+    await Future.delayed(const Duration(milliseconds: 500));
+    retries++;
+  }
+  print('Failed to navigate: Navigator not available after $maxRetries retries');
+}
+
+
 class MyCarpoolApp extends StatelessWidget {
-  const MyCarpoolApp({super.key});
+   final RemoteMessage? initialMessage;
+  const MyCarpoolApp({super.key,this.initialMessage});
 
   @override
   Widget build(BuildContext context) {
+     if (initialMessage != null && initialMessage!.data['callId'] != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        print('App launched from notification: ${initialMessage!.data}');
+        await _navigateToCallScreen(initialMessage!.data);
+      });
+    }
     return MaterialApp(
       title: 'Carpool App',
       debugShowCheckedModeBanner: false,
       theme: appTheme,
+      navigatorKey: navigatorKey, 
       initialRoute: '/',
       routes: routes,
     );
