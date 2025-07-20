@@ -2,8 +2,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jwt_decode/jwt_decode.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:mobile_frontend/config/constant.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shimmer/shimmer.dart';
 
 class DriverProfilePage extends StatefulWidget {
   const DriverProfilePage({super.key});
@@ -16,7 +20,9 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
   String profileImageUrl = 'https://i.pravatar.cc/150?img=33';
   File? _imageFile;
   final ImagePicker _picker = ImagePicker();
-  final _storage = FlutterSecureStorage();
+  final _storage = const FlutterSecureStorage();
+  bool _isLoading = true;
+  bool _isEarningsLoading = true;
 
   // User data
   String firstName = '';
@@ -24,7 +30,11 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
   String userName = '';
   String userPhone = '';
   String userEmail = '';
-  bool _isLoading = true;
+  // Earnings data
+  double pendingEarnings = 0.0;
+  double totalEarnings = 0.0;
+  int totalRideCount = 0;
+  int pendingPaymentRideCount = 0;
 
   @override
   void initState() {
@@ -56,6 +66,7 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
         return;
       }
 
+      // Set user data immediately
       setState(() {
         firstName = payload['firstName'] ?? 'Unknown User';
         lastName = payload['lastName'] ?? 'Unknown User';
@@ -64,9 +75,61 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
         userName = '$firstName $lastName';
         _isLoading = false;
       });
+
+      // Fetch earnings data asynchronously
+      Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
+      final userId = decodedToken['id'] ?? '';
+      if (userId.isNotEmpty) {
+        await _fetchEarnings(userId, token);
+      } else {
+        throw Exception('User ID not found in JWT token');
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading user data: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading user data: $e')),
+      );
       Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+    }
+  }
+
+  Future<void> _fetchEarnings(String userId, String token) async {
+    const String baseUrl =
+        'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
+    final url = Uri.parse('$baseUrl/earnings');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'userId': userId}),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          pendingEarnings = (data['pendingEarnings'] as num?)?.toDouble() ?? 0.0;
+          totalEarnings = (data['totalEarnings'] as num?)?.toDouble() ?? 0.0;
+          totalRideCount = (data['totalRideCount'] as num?)?.toInt() ?? 0;
+          pendingPaymentRideCount = (data['pendingPaymentRideCount'] as num?)?.toInt() ?? 0;
+          _isEarningsLoading = false;
+        });
+      } else {
+        throw Exception('Failed to fetch earnings: ${response.statusCode}');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching earnings: $e')),
+      );
+      setState(() {
+        pendingEarnings = 0.0;
+        totalEarnings = 0.0;
+        totalRideCount = 0;
+        pendingPaymentRideCount = 0;
+        _isEarningsLoading = false;
+      });
     }
   }
 
@@ -116,19 +179,27 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: Colors.white,
         elevation: 8,
-        title: Text('Logout', style: TextStyle(color: Colors.black87, fontSize: 24, fontWeight: FontWeight.bold)),
+        title: const Text('Logout', style: TextStyle(color: Colors.black87, fontSize: 24, fontWeight: FontWeight.bold)),
         content: const Text('Are you sure you want to log out?', style: TextStyle(color: Colors.black87, fontSize: 16)),
         actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text('Cancel', style: TextStyle(color: linkColor, fontSize: 16, fontWeight: FontWeight.w500)),
-            style: TextButton.styleFrom(side: BorderSide(color: linkColor, width: 1), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            style: TextButton.styleFrom(
+              side: BorderSide(color: linkColor, width: 1),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Logout', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
-            style: TextButton.styleFrom(backgroundColor: mainButtonColor, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            style: TextButton.styleFrom(
+              backgroundColor: mainButtonColor,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
           ),
         ],
       ),
@@ -139,9 +210,47 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
         await _storage.delete(key: 'jwt_token');
         Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error during logout: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error during logout: $e')),
+        );
       }
     }
+  }
+
+  Widget _buildEarningsPlaceholder() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Container(
+        width: 250,
+        child: Card(
+          margin: EdgeInsets.zero,
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(width: 150, height: 16, color: Colors.white),
+                const SizedBox(height: 20),
+                Container(width: 100, height: 36, color: Colors.white),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Container(width: 10, height: 10, color: Colors.white),
+                    const SizedBox(width: 4),
+                    Container(width: 80, height: 10, color: Colors.white),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -214,9 +323,22 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
                         child: ListView(
                           scrollDirection: Axis.horizontal,
                           children: [
-                            _infoCard('Pending Payment (Rs)', 'Rs. 12,000', 'From 20 rides'),
+                            _isEarningsLoading
+                                ? _buildEarningsPlaceholder()
+                                : _infoCard(
+                                    'Pending Payment (Rs)',
+                                    'Rs. ${pendingEarnings.toStringAsFixed(2)}',
+                                    'From $pendingPaymentRideCount ride${pendingPaymentRideCount == 1 ? '' : 's'}',
+                                  ),
                             const SizedBox(width: 15),
-                            _infoCard('Total Earned (Rs)', 'Rs. 32,000', 'From 52 rides', isRight: true),
+                            _isEarningsLoading
+                                ? _buildEarningsPlaceholder()
+                                : _infoCard(
+                                    'Total Earned (Rs)',
+                                    'Rs. ${totalEarnings.toStringAsFixed(2)}',
+                                    'From $totalRideCount ride${totalRideCount == 1 ? '' : 's'}',
+                                    isRight: true,
+                                  ),
                           ],
                         ),
                       ),
@@ -271,7 +393,7 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
                             setState(() {
                               userPhone = result;
                             });
-                            await _loadUserData(); // Reload data to sync with new token
+                            await _loadUserData();
                           }
                         },
                         child: ListTile(
