@@ -774,19 +774,11 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                           ),
                           child: IconButton(
                             icon: const Icon(Icons.call, color: Colors.white),
-                            onPressed: () async {
-                              String receiverId = nextPassenger!.passengerId; // Use actual passenger ID
+                            onPressed: () async {// Use actual passenger ID
                               try {
-                                final callData = await _callService.initiateCall(currentUserId, receiverId);
                                 Navigator.pushNamed(
                                   context,
                                   '/call',
-                                  arguments: {
-                                    'callId': callData['callId'],
-                                    'channelName': callData['channelName'],
-                                    'agoraToken': callData['agoraToken'],
-                                    'callerId': currentUserId,
-                                  },
                                 );
                               } catch (e) {
                                 ScaffoldMessenger.of(context).showSnackBar(
