@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:mobile_frontend/services/call_service.dart';
 import 'package:mobile_frontend/services/local_notification.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -10,8 +11,14 @@ import 'package:mobile_frontend/config/routes.dart';
 import 'package:mobile_frontend/config/theme.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
   print('🔕 Handling background message: ${message.messageId}');
+  
+  if (message.data['callId'] != null) {
+    await _showIncomingCallNotification(message.data);
+  }
 }
+
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
@@ -30,7 +37,8 @@ void main() async {
   LocalNotificationsService notificationsService = LocalNotificationsService();
   await notificationsService.init();
 
-  RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+  RemoteMessage? initialMessage =
+      await FirebaseMessaging.instance.getInitialMessage();
 
   runApp(const MyCarpoolApp());
 }
@@ -38,7 +46,6 @@ void main() async {
 Future<void> requestLocationPermission() async {
   var status = await Permission.location.status;
   await Permission.microphone.request();
-
 
   if (status.isDenied || status.isRestricted) {
     status = await Permission.location.request();
@@ -71,11 +78,14 @@ Future<void> setupFirebaseMessaging() async {
   }
   print('Device FCM Token: $token');
 
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
     print('🔔 Received message in foreground: ${message.notification?.title}');
     print('🔔 Message body: ${message.notification?.body}');
+    if (message.data['callId']!=null) {
+      await _navigateToIncommingCallScreen(message.data);
+    }
   });
- FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
     print('User tapped on notification: ${message.data}');
     if (message.data['callId'] != null) {
       await _navigateToCallScreen(message.data);
@@ -84,13 +94,10 @@ Future<void> setupFirebaseMessaging() async {
 }
 
 Future<void> _navigateToCallScreen(Map<String, dynamic> data) async {
-
-
-
-   final response = await CallService.getAgoraToken(
-                       data['channelName'],
-                      "12345",
-                    );
+  final response = await CallService.getAgoraToken(
+    data['channelName'],
+    "12345",
+  );
   // Retry navigation until navigator is available
   const maxRetries = 10;
   var retries = 0;
@@ -103,6 +110,7 @@ Future<void> _navigateToCallScreen(Map<String, dynamic> data) async {
           'token': response,
           'channelName': data['channelName'],
           'uid': 12345,
+          'contactName': data['callerName'],
         },
       );
       print('Navigation to CallScreen successful');
@@ -112,17 +120,110 @@ Future<void> _navigateToCallScreen(Map<String, dynamic> data) async {
     await Future.delayed(const Duration(milliseconds: 500));
     retries++;
   }
-  print('Failed to navigate: Navigator not available after $maxRetries retries');
+  print(
+    'Failed to navigate: Navigator not available after $maxRetries retries',
+  );
+}
+Future<void> _navigateToIncommingCallScreen(Map<String, dynamic> data) async {
+  final response = await CallService.getAgoraToken(
+    data['channelName'],
+    "12345",
+  );
+  // Retry navigation until navigator is available
+  const maxRetries = 10;
+  var retries = 0;
+  while (retries < maxRetries) {
+    final navigator = navigatorKey.currentState;
+    if (navigator != null) {
+      navigator.pushNamed(
+        '/incommingcall',
+        arguments: {
+          'token': response,
+          'channelName': data['channelName'],
+          'uid': 12345,
+          'contactName': data['callerName'],
+        },
+      );
+      print('Navigation to CallScreen successful');
+      return;
+    }
+    print('Navigator not available, retrying (${retries + 1}/$maxRetries)...');
+    await Future.delayed(const Duration(milliseconds: 500));
+    retries++;
+  }
+  print(
+    'Failed to navigate: Navigator not available after $maxRetries retries',
+  );
 }
 
 
+Future<void> _showIncomingCallNotification(Map<String, dynamic> data) async {
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = 
+      FlutterLocalNotificationsPlugin();
+
+  // Android notification details for incoming call
+  const AndroidNotificationDetails androidPlatformChannelSpecifics = 
+      AndroidNotificationDetails(
+    'incoming_call_channel',
+    'Incoming Calls',
+    channelDescription: 'Notifications for incoming calls',
+    importance: Importance.max,
+    priority: Priority.max,
+    category: AndroidNotificationCategory.call,
+    fullScreenIntent: true, // This makes it show as full screen
+    showWhen: true,
+    autoCancel: false,
+    ongoing: true,
+    enableVibration: true,
+    playSound: true,
+    sound: RawResourceAndroidNotificationSound('incoming_call'), // Custom ringtone
+    actions: <AndroidNotificationAction>[
+      AndroidNotificationAction(
+        'decline_call',
+        'Decline',
+        showsUserInterface: false,
+        cancelNotification: true,
+      ),
+      AndroidNotificationAction(
+        'accept_call',
+        'Accept',
+        showsUserInterface: true,
+        cancelNotification: true,
+      ),
+    ],
+  );
+
+  // iOS notification details
+  const DarwinNotificationDetails iOSPlatformChannelSpecifics = 
+      DarwinNotificationDetails(
+    presentAlert: true,
+    presentBadge: true,
+    presentSound: true,
+    interruptionLevel: InterruptionLevel.critical,
+    categoryIdentifier: 'incoming_call_category',
+  );
+
+  const NotificationDetails platformChannelSpecifics = NotificationDetails(
+    android: androidPlatformChannelSpecifics,
+    iOS: iOSPlatformChannelSpecifics,
+  );
+
+  await flutterLocalNotificationsPlugin.show(
+    0,
+    'Incoming Call',
+    'Call from ${data['callerName'] ?? 'Unknown'}',
+    platformChannelSpecifics,
+    payload: 'incoming_call:${data['callId']}',
+  );
+}
+
 class MyCarpoolApp extends StatelessWidget {
-   final RemoteMessage? initialMessage;
-  const MyCarpoolApp({super.key,this.initialMessage});
+  final RemoteMessage? initialMessage;
+  const MyCarpoolApp({super.key, this.initialMessage});
 
   @override
   Widget build(BuildContext context) {
-     if (initialMessage != null && initialMessage!.data['callId'] != null) {
+    if (initialMessage != null && initialMessage!.data['callId'] != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         print('App launched from notification: ${initialMessage!.data}');
         await _navigateToCallScreen(initialMessage!.data);
@@ -132,7 +233,7 @@ class MyCarpoolApp extends StatelessWidget {
       title: 'Carpool App',
       debugShowCheckedModeBanner: false,
       theme: appTheme,
-      navigatorKey: navigatorKey, 
+      navigatorKey: navigatorKey,
       initialRoute: '/',
       routes: routes,
     );

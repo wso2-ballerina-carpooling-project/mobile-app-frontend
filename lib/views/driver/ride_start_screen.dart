@@ -7,6 +7,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_frontend/services/call_service.dart';
 import 'package:mobile_frontend/views/common/call_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:mobile_frontend/config/constant.dart';
@@ -870,12 +871,14 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                                       channelName,
                                       callId,
                                     );
+                                final prefs = await SharedPreferences.getInstance();
+                                final driverName = prefs.getString('firstName') ?? 'Driver';
 
                                 await CallService.sendCallNotification(
                                   driverId: "1234",
                                   callId: callId,
                                   channelName: channelName,
-                                  callerName: 'Nalaka',
+                                  callerName: driverName,
                                 );
 
                                 // Send FCM notification to the driver
@@ -888,6 +891,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                                           uid: 1234,
                                           token: response,
                                           channelName: channelName,
+                                          contactName: passengerName,
                                           // Display recipient's name
                                         ),
                                   ),

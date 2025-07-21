@@ -172,52 +172,52 @@ class RouteCard extends StatelessWidget {
                   minimumSize: const Size(80, 30),
                 ),
                 onPressed: () async {
-                  try {
+                //   try {
                 
 
 
-                 // Use actual current user ID
-                    final channelName =
-                        'ride_${ride.rideId}'; // Unique channel per ride
-                    final response = await CallService.getAgoraToken(
-                      channelName,
-                      "1234",
-                    );
+                //  // Use actual current user ID
+                //     final channelName =
+                //         'ride_${ride.rideId}'; // Unique channel per ride
+                //     final response = await CallService.getAgoraToken(
+                //       channelName,
+                //       "1234",
+                //     );
 
-                    await CallService.sendCallNotification(
-                      driverId: "1234",
-                      callId: "1234",
-                      channelName: channelName,
-                      callerName: 'Nalaka',
-                    );
+                //     await CallService.sendCallNotification(
+                //       driverId: "1234",
+                //       callId: "1234",
+                //       channelName: channelName,
+                //       callerName: 'Nalaka',
+                //     );
 
-                    // Send FCM notification to the driver
+                //     // Send FCM notification to the driver
                    
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (context) => CallingScreen(
-                              token: response,
-                              channelName: channelName,
-                              uid: 1234, // Display recipient's name
-                            ),
-                      ),
-                    );
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error initiating call: $e')),
-                    );
-                  }
+                //     Navigator.push(
+                //       context,
+                //       MaterialPageRoute(
+                //         builder:
+                //             (context) => CallingScreen(
+                //               token: response,
+                //               channelName: channelName,
+                //               uid: 1234, // Display recipient's name
+                //             ),
+                //       ),
+                //     );
+                //   } catch (e) {
+                //     ScaffoldMessenger.of(context).showSnackBar(
+                //       SnackBar(content: Text('Error initiating call: $e')),
+                //     );
+                //   }
 
-                  // Navigator.push(
-                  //   context,
-                  //   MaterialPageRoute(
-                  //     builder:
-                  //         (context) => DriverRideTracking(ride: ride),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => DriverRideTracking(ride: ride),
 
-                  //   ),
-                  // );
+                    ),
+                  );
                 },
                 child: const Text(
                   'Start',
