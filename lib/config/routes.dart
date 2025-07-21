@@ -28,7 +28,11 @@ final Map<String, WidgetBuilder> routes = {
   '/phoneEdit': (context) => PhoneUpdate(),
   '/nameEdit' : (context) => NameUpdateScreen(),
   '/vehicleEdit' : (context) => VehicleUpdate(),
-  '/call': (context) => CallScreen(),
+  '/call': (context) => CallingScreen(
+        channelName: (ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>)['channelName'],
+        token: (ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>)['token'],
+        uid: (ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>)['uid'],
+      ),
   // Add the main navigation route
   // '/main': (context) => MainNavigation(),
 };

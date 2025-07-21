@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile_frontend/services/call_service.dart';
 import 'package:mobile_frontend/services/local_notification.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -36,6 +37,8 @@ void main() async {
 
 Future<void> requestLocationPermission() async {
   var status = await Permission.location.status;
+  await Permission.microphone.request();
+
 
   if (status.isDenied || status.isRestricted) {
     status = await Permission.location.request();
@@ -81,6 +84,13 @@ Future<void> setupFirebaseMessaging() async {
 }
 
 Future<void> _navigateToCallScreen(Map<String, dynamic> data) async {
+
+
+
+   final response = await CallService.getAgoraToken(
+                       data['channelName'],
+                      "12345",
+                    );
   // Retry navigation until navigator is available
   const maxRetries = 10;
   var retries = 0;
@@ -90,9 +100,9 @@ Future<void> _navigateToCallScreen(Map<String, dynamic> data) async {
       navigator.pushNamed(
         '/call',
         arguments: {
-          'callId': data['callId'],
+          'token': response,
           'channelName': data['channelName'],
-          'callerName': data['callerName'] ?? data['callerId'] ?? 'Unknown',
+          'uid': 12345,
         },
       );
       print('Navigation to CallScreen successful');

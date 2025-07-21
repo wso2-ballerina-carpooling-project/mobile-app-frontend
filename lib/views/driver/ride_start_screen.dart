@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_frontend/services/call_service.dart';
+import 'package:mobile_frontend/views/common/call_screen.dart';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:mobile_frontend/config/constant.dart';
@@ -20,7 +21,6 @@ class DriverRideTracking extends StatefulWidget {
 }
 
 class _DriverRideTrackingState extends State<DriverRideTracking> {
-  final CallService _callService = CallService();
   final String currentUserId = '';
   late GoogleMapController mapController;
   Set<Marker> markers = {};
@@ -53,15 +53,18 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
   }
 
   Future<void> _startRide() async {
-    const String baseUrl = 'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
+    const String baseUrl =
+        'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
     final url = Uri.parse('$baseUrl/rides/begin');
 
     try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'rideId': widget.ride.rideId}),
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'rideId': widget.ride.rideId}),
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         await _checkLocationPermission();
@@ -82,7 +85,8 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
   }
 
   Future<void> _endRide() async {
-    const String baseUrl = 'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
+    const String baseUrl =
+        'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
     final url = Uri.parse('$baseUrl/rides/end');
 
     setState(() {
@@ -90,11 +94,13 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
     });
 
     try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'rideId': widget.ride.rideId}),
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'rideId': widget.ride.rideId}),
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         if (!_isDisposed) {
@@ -230,7 +236,9 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
 
   Passenger? _getNearestPassenger(LatLng driverPosition) {
     List<Passenger> remainingPassengers =
-        widget.ride.passengers.where((p) => !pickedUpPassengers.contains(p)).toList();
+        widget.ride.passengers
+            .where((p) => !pickedUpPassengers.contains(p))
+            .toList();
     if (remainingPassengers.isEmpty) return null;
 
     Passenger nearestPassenger = remainingPassengers[0];
@@ -249,7 +257,9 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
     return nearestPassenger;
   }
 
-  Future<Map<String, dynamic>> _fetchPassengerDetails(String passengerId) async {
+  Future<Map<String, dynamic>> _fetchPassengerDetails(
+    String passengerId,
+  ) async {
     const String baseUrl =
         'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
     final url = Uri.parse('$baseUrl/passenger/$passengerId');
@@ -261,8 +271,10 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
 
       print('Response status: ${response.statusCode}, body: ${response.body}');
       if (response.statusCode == 200) {
-        final decodedResponse = jsonDecode(response.body) as Map<String, dynamic>;
-        final userDetails = decodedResponse['User'] as Map<String, dynamic>? ?? {};
+        final decodedResponse =
+            jsonDecode(response.body) as Map<String, dynamic>;
+        final userDetails =
+            decodedResponse['User'] as Map<String, dynamic>? ?? {};
         setState(() {
           passengerDetails[passengerId] = userDetails;
           if (nextPassenger?.passengerId == passengerId) {
@@ -272,7 +284,9 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
         });
         return userDetails;
       }
-      print('Failed with status: ${response.statusCode}, body: ${response.body}');
+      print(
+        'Failed with status: ${response.statusCode}, body: ${response.body}',
+      );
       return {};
     } catch (e) {
       print('Error fetching passenger details: $e');
@@ -280,7 +294,10 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
     }
   }
 
-  Future<void> _fetchWaypointAddress(String passengerId, LatLng waypoint) async {
+  Future<void> _fetchWaypointAddress(
+    String passengerId,
+    LatLng waypoint,
+  ) async {
     try {
       String url =
           'https://maps.googleapis.com/maps/api/geocode/json?latlng=${waypoint.latitude},${waypoint.longitude}&key=AIzaSyBJToHkeu0EhfzRM64HXhCg2lil_Kg9pSE';
@@ -289,10 +306,13 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
         var decodedData = jsonDecode(response.body);
         if (decodedData['status'] == 'OK') {
           setState(() {
-            waypointAddresses[passengerId] = decodedData['results'][0]['formatted_address'] as String;
+            waypointAddresses[passengerId] =
+                decodedData['results'][0]['formatted_address'] as String;
           });
         } else {
-          _showError('Failed to fetch waypoint address: ${decodedData['status']}');
+          _showError(
+            'Failed to fetch waypoint address: ${decodedData['status']}',
+          );
         }
       } else {
         _showError('Failed to get waypoint address: ${response.statusCode}');
@@ -304,12 +324,16 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
 
   Future<void> _fetchDrivingRoute(LatLng origin, LatLng destination) async {
     try {
-      if (pickedUpPassengers.length < widget.ride.passengers.length && nextPassenger != null) {
+      if (pickedUpPassengers.length < widget.ride.passengers.length &&
+          nextPassenger != null) {
         if (passengerDetails[nextPassenger!.passengerId] == null) {
           await _fetchPassengerDetails(nextPassenger!.passengerId);
         }
         if (waypointAddresses[nextPassenger!.passengerId] == null) {
-          await _fetchWaypointAddress(nextPassenger!.passengerId, nextPassenger!.waypoint);
+          await _fetchWaypointAddress(
+            nextPassenger!.passengerId,
+            nextPassenger!.waypoint,
+          );
         }
       } else {
         setState(() {
@@ -327,7 +351,9 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
       }
 
       polylineCoordinates.clear();
-      polylineCoordinates.addAll(widget.ride.route.polyline.sublist(startIndex, endIndex + 1));
+      polylineCoordinates.addAll(
+        widget.ride.route.polyline.sublist(startIndex, endIndex + 1),
+      );
       _createPolyline();
 
       String url =
@@ -343,7 +369,9 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
               distanceText = element['distance']['text'];
               durationText = element['duration_in_traffic']['text'];
               int durationSeconds = element['duration_in_traffic']['value'];
-              DateTime eta = DateTime.now().add(Duration(seconds: durationSeconds));
+              DateTime eta = DateTime.now().add(
+                Duration(seconds: durationSeconds),
+              );
               etaText = '${eta.hour}:${eta.minute.toString().padLeft(2, '0')}';
             });
           } else {
@@ -362,10 +390,16 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
 
   int _findClosestPolylineIndex(LatLng position) {
     int closestIndex = 0;
-    double minDistance = _calculateDistance(position, widget.ride.route.polyline[0]);
+    double minDistance = _calculateDistance(
+      position,
+      widget.ride.route.polyline[0],
+    );
 
     for (int i = 1; i < widget.ride.route.polyline.length; i++) {
-      double distance = _calculateDistance(position, widget.ride.route.polyline[i]);
+      double distance = _calculateDistance(
+        position,
+        widget.ride.route.polyline[i],
+      );
       if (distance < minDistance) {
         minDistance = distance;
         closestIndex = i;
@@ -429,7 +463,9 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
           Marker(
             markerId: MarkerId('passenger_${passenger.passengerId}'),
             position: passenger.waypoint,
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueBlue,
+            ),
             infoWindow: InfoWindow(title: passengerName ?? passenger.address),
           ),
         );
@@ -452,7 +488,8 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
     final deltaLat = (point2.latitude - point1.latitude) * pi / 180;
     final deltaLon = (point2.longitude - point1.longitude) * pi / 180;
 
-    final a = sin(deltaLat / 2) * sin(deltaLat / 2) +
+    final a =
+        sin(deltaLat / 2) * sin(deltaLat / 2) +
         cos(lat1) * cos(lat2) * sin(deltaLon / 2) * sin(deltaLon / 2);
     final c = 2 * atan2(sqrt(a), sqrt(1 - a));
     return earthRadius * c;
@@ -469,7 +506,9 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
       };
       try {
         _channel!.sink.add(jsonEncode(pickupMessage));
-        print("📤 Sent passenger picked up message: ${jsonEncode(pickupMessage)}");
+        print(
+          "📤 Sent passenger picked up message: ${jsonEncode(pickupMessage)}",
+        );
       } catch (e) {
         _showError('Error sending pickup confirmation: $e');
         _isWebSocketConnected = false;
@@ -537,7 +576,9 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
       print("📤 Sending initial connection message: ${jsonEncode(message)}");
       _channel!.sink.add(jsonEncode(message));
     } else {
-      print("⚠️ WebSocket not connected, cannot send initial connection message");
+      print(
+        "⚠️ WebSocket not connected, cannot send initial connection message",
+      );
     }
   }
 
@@ -577,8 +618,14 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
 
   Future<void> _loadIcons() async {
     const imageConfiguration = ImageConfiguration(size: Size(48, 48));
-    _pinIcon = await BitmapDescriptor.asset(imageConfiguration, 'assets/pin.png');
-    _carIcon = await BitmapDescriptor.asset(imageConfiguration, 'assets/car-d.png');
+    _pinIcon = await BitmapDescriptor.asset(
+      imageConfiguration,
+      'assets/pin.png',
+    );
+    _carIcon = await BitmapDescriptor.asset(
+      imageConfiguration,
+      'assets/car-d.png',
+    );
   }
 
   void _sendLocationUpdate(LatLng location, {double? speed, double? heading}) {
@@ -654,20 +701,24 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
           isLoading
               ? const Center(child: CircularProgressIndicator())
               : GoogleMap(
-                  onMapCreated: (controller) {
-                    mapController = controller;
-                    updateMapTheme(controller);
-                  },
-                  initialCameraPosition: CameraPosition(
-                    target: currentPosition != null
-                        ? LatLng(currentPosition!.latitude, currentPosition!.longitude)
-                        : widget.ride.route.polyline.first,
-                    zoom: 14.0,
-                  ),
-                  markers: markers,
-                  polylines: polylines,
-                  myLocationEnabled: true,
+                onMapCreated: (controller) {
+                  mapController = controller;
+                  updateMapTheme(controller);
+                },
+                initialCameraPosition: CameraPosition(
+                  target:
+                      currentPosition != null
+                          ? LatLng(
+                            currentPosition!.latitude,
+                            currentPosition!.longitude,
+                          )
+                          : widget.ride.route.polyline.first,
+                  zoom: 14.0,
                 ),
+                markers: markers,
+                polylines: polylines,
+                myLocationEnabled: true,
+              ),
           Positioned(
             bottom: 16,
             left: 16,
@@ -706,7 +757,11 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.location_on, color: Colors.blue[400], size: 20),
+                                Icon(
+                                  Icons.location_on,
+                                  color: Colors.blue[400],
+                                  size: 20,
+                                ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
@@ -728,12 +783,19 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                               const SizedBox(height: 8),
                               Row(
                                 children: [
-                                  Icon(Icons.person, color: Colors.green[400], size: 18),
+                                  Icon(
+                                    Icons.person,
+                                    color: Colors.green[400],
+                                    size: 18,
+                                  ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
                                       'Passenger: $passengerName',
-                                      style: TextStyle(color: Colors.grey[300], fontSize: 14),
+                                      style: TextStyle(
+                                        color: Colors.grey[300],
+                                        fontSize: 14,
+                                      ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -747,15 +809,33 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                               decoration: BoxDecoration(
                                 color: Colors.black.withOpacity(0.3),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey[700]!, width: 0.5),
+                                border: Border.all(
+                                  color: Colors.grey[700]!,
+                                  width: 0.5,
+                                ),
                               ),
                               child: Column(
                                 children: [
-                                  _buildInfoRow(Icons.straighten, 'Distance', distanceText ?? "Calculating...", Colors.orange[400]!),
+                                  _buildInfoRow(
+                                    Icons.straighten,
+                                    'Distance',
+                                    distanceText ?? "Calculating...",
+                                    Colors.orange[400]!,
+                                  ),
                                   const SizedBox(height: 8),
-                                  _buildInfoRow(Icons.schedule, 'Duration', durationText ?? "Calculating...", Colors.purple[400]!),
+                                  _buildInfoRow(
+                                    Icons.schedule,
+                                    'Duration',
+                                    durationText ?? "Calculating...",
+                                    Colors.purple[400]!,
+                                  ),
                                   const SizedBox(height: 8),
-                                  _buildInfoRow(Icons.access_time, 'ETA', etaText ?? "Calculating...", Colors.blue[400]!),
+                                  _buildInfoRow(
+                                    Icons.access_time,
+                                    'ETA',
+                                    etaText ?? "Calculating...",
+                                    Colors.blue[400]!,
+                                  ),
                                 ],
                               ),
                             ),
@@ -769,20 +849,54 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                             color: Colors.green[600],
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
-                              BoxShadow(color: Colors.green.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 2)),
+                              BoxShadow(
+                                color: Colors.green.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
                             ],
                           ),
                           child: IconButton(
                             icon: const Icon(Icons.call, color: Colors.white),
-                            onPressed: () async {// Use actual passenger ID
+                            onPressed: () async {
+                              _closeWebSocket();
                               try {
-                                Navigator.pushNamed(
+                                final callId =
+                                    "1234"; // Use current user ID
+                                final channelName =
+                                    'ride_${widget.ride.rideId}'; // Unique channel per ride
+                                final response =
+                                    await CallService.getAgoraToken(
+                                      channelName,
+                                      callId,
+                                    );
+
+                                await CallService.sendCallNotification(
+                                  driverId: "1234",
+                                  callId: callId,
+                                  channelName: channelName,
+                                  callerName: 'Nalaka',
+                                );
+
+                                // Send FCM notification to the driver
+
+                                Navigator.push(
                                   context,
-                                  '/call',
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => CallingScreen(
+                                          uid: 1234,
+                                          token: response,
+                                          channelName: channelName,
+                                          // Display recipient's name
+                                        ),
+                                  ),
                                 );
                               } catch (e) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Error initiating call: $e')),
+                                  SnackBar(
+                                    content: Text('Error initiating call: $e'),
+                                  ),
                                 );
                               }
                             },
@@ -805,59 +919,71 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                       ),
                     ],
                   ),
-                  child: nextPassenger != null
-                      ? ElevatedButton(
-                          onPressed: () => _confirmPassengerPickup(nextPassenger!),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue[600],
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            elevation: 0,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.check_circle, size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Confirm Pickup: ${passengerName ?? "Passenger"}',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                  textAlign: TextAlign.center,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                  child:
+                      nextPassenger != null
+                          ? ElevatedButton(
+                            onPressed:
+                                () => _confirmPassengerPickup(nextPassenger!),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue[600],
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                            ],
-                          ),
-                        )
-                      : ElevatedButton(
-                          onPressed: _endRide,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue[600],
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            elevation: 0,
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.check_circle, size: 20),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'End Trip',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                  textAlign: TextAlign.center,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                              elevation: 0,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.check_circle, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Confirm Pickup: ${passengerName ?? "Passenger"}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
+                              ],
+                            ),
+                          )
+                          : ElevatedButton(
+                            onPressed: _endRide,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue[600],
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                            ],
+                              elevation: 0,
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.check_circle, size: 20),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'End Trip',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
                 ),
               ],
             ),
@@ -867,19 +993,32 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value, Color iconColor) {
+  Widget _buildInfoRow(
+    IconData icon,
+    String label,
+    String value,
+    Color iconColor,
+  ) {
     return Row(
       children: [
         Icon(icon, color: iconColor, size: 16),
         const SizedBox(width: 8),
         Text(
           '$label: ',
-          style: TextStyle(color: Colors.grey[400], fontSize: 13, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            color: Colors.grey[400],
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
