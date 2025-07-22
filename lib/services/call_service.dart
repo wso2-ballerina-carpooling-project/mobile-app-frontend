@@ -4,7 +4,7 @@ import 'dart:convert';
 class CallService {
   static Future<String> getAgoraToken(String channelName, String userId) async {
   final response = await http.post(
-    Uri.parse('http://192.168.42.103:3000/generateToken'),
+    Uri.parse('https://agora-token-generation.onrender.com/generateToken'),
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode({'channelName': channelName, 'uid': userId}),
   );
@@ -21,11 +21,12 @@ class CallService {
     required String callId,
     required String channelName,
     required String callerName,
+    required String passengerId
   }) async {
      final response = await http.post(
       Uri.parse('https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0/call'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'channelName': channelName, 'driverId': driverId,"callId":callId,"callerName":callerName}),
+      body: jsonEncode({'channelName': channelName, 'driverId': driverId,"callId":callId,"callerName":callerName,"passengerId":passengerId}),
     );
     if (response.statusCode != 200) {
       throw Exception('Failed to send call notification');

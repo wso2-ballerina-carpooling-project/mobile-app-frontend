@@ -36,6 +36,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
   String? durationText;
   String? etaText;
   String? passengerName;
+  String fcm = "";
   String? phone;
   WebSocketChannel? _channel;
   bool _isWebSocketConnected = false;
@@ -280,6 +281,9 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
           passengerDetails[passengerId] = userDetails;
           if (nextPassenger?.passengerId == passengerId) {
             passengerName = userDetails['firstName'] as String? ?? 'Unknown';
+            fcm = userDetails['fcm'] as String;
+            print('passenegerId');
+            print(fcm);
             phone = userDetails['phone'] as String;
           }
         });
@@ -879,6 +883,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                                   callId: callId,
                                   channelName: channelName,
                                   callerName: driverName,
+                                  passengerId: fcm
                                 );
 
                                 // Send FCM notification to the driver
