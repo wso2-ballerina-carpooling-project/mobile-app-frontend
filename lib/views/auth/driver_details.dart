@@ -142,7 +142,7 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
                       const SizedBox(height: 20),
                       CustomDropdownField(
                         label: 'Vehicle Type',
-                        options: ['Sedan', 'SUV', 'Hatchback', 'Van', 'Truck'],
+                        options: ['Mini', 'Flex', 'Suv', 'Van'],
                         value: _vehicleTypeValue,
                         hintText: 'Select vehicle type',
                         onChanged: (value) {
