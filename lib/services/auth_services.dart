@@ -32,4 +32,22 @@ class ApiService {
 
     return await http.post(url, headers: headers, body: body);
   }
+   static Future<http.Response> sendotp(String email) async {
+    final url = Uri.parse('$baseUrl/forgot');
+    final headers = {
+      'Content-Type': 'application/json'
+    };
+    final body = jsonEncode({"email":email});
+
+    return await http.post(url, headers: headers, body: body);
+  }
+   static Future<http.Response> resetpass(Map<String, dynamic> resetData) async {
+    final url = Uri.parse('$baseUrl/resetpassword');
+    final headers = {
+      'Content-Type': 'application/json'
+    };
+    final body = jsonEncode(resetData);
+
+    return await http.post(url, headers: headers, body: body);
+  }
 }
