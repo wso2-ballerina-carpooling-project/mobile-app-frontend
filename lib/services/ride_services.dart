@@ -204,9 +204,11 @@ class RideService {
       );
 
       if (response.statusCode == 200) {
+        print("response ok");
         final data = jsonDecode(response.body);
         print(data);
         final List<dynamic> rideList = data['rideDoc'];
+        print(rideList);
 
         rideList.sort((a, b) {
           DateTime dateA = _parseDate(a['date']);
@@ -301,5 +303,8 @@ class RideService {
       print('Error parsing date $dateStr: $e');
       return DateTime(1970, 1, 1);
     }
+  }
+  static void endride(String rideID){
+      
   }
 }

@@ -5,7 +5,6 @@ import 'package:mobile_frontend/widgets/custom_input_field.dart';
 import 'package:mobile_frontend/widgets/dropdown_input.dart';
 import 'package:mobile_frontend/services/auth_services.dart';
 
-
 class DriverDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
 
@@ -21,6 +20,7 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
   String? _vehicleTypeValue;
   String? _vehicleBrandValue;
   int _numberOfSeats = 2;
+  bool _isLoading = false; // Added to track loading state
 
   @override
   void dispose() {
@@ -40,6 +40,10 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
       );
       return;
     }
+
+    setState(() {
+      _isLoading = true; // Set loading state to true before API call
+    });
 
     final vehicleDetails = {
       'vehicleType': _vehicleTypeValue,
@@ -68,6 +72,10 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
+    } finally {
+      setState(() {
+        _isLoading = false; // Reset loading state after API call completes
+      });
     }
   }
 
@@ -134,7 +142,7 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
                       const SizedBox(height: 20),
                       CustomDropdownField(
                         label: 'Vehicle Type',
-                        options: ['Sedan', 'SUV', 'Hatchback', 'Van', 'Truck'],
+                        options: ['Mini', 'Flex', 'Suv', 'Van'],
                         value: _vehicleTypeValue,
                         hintText: 'Select vehicle type',
                         onChanged: (value) {
@@ -253,10 +261,12 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
                         ],
                       ),
                       const SizedBox(height: 30),
-                      CustomButton(
-                        text: 'Complete Registration',
-                        onPressed: _validateAndRegister,
-                      ),
+                      _isLoading
+                          ? const Center(child: CircularProgressIndicator(color: Colors.blue))
+                          : CustomButton(
+                              text: 'Complete Registration',
+                              onPressed: _validateAndRegister,
+                            ),
                       const SizedBox(height: 10),
                     ],
                   ),

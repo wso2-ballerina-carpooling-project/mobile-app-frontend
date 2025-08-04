@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/models/RideData.dart';
-import 'package:mobile_frontend/views/driver/ride_detail_screen.dart'; // Adjust import path
+import 'package:mobile_frontend/views/driver/completed_ride_details.dart';
 
 class SimpleRideCard extends StatelessWidget {
   final Ride ride;
@@ -25,7 +25,7 @@ class SimpleRideCard extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => RideDetailScreen(ride: ride),
+            builder: (context) => CompletedRideDetails(ride: ride),
           ),
         );
       },

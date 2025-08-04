@@ -7,18 +7,17 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 
-import 'package:mobile_frontend/views/driver/ride_cancel.dart';
 
-class RideDetailScreen extends StatefulWidget {
+class CompletedRideDetails extends StatefulWidget {
   final Ride ride;
 
-  const RideDetailScreen({super.key, required this.ride});
+  const CompletedRideDetails({super.key, required this.ride});
 
   @override
-  _RideDetailScreenState createState() => _RideDetailScreenState();
+  _CompletedRideDetailsState createState() => _CompletedRideDetailsState();
 }
 
-class _RideDetailScreenState extends State<RideDetailScreen> {
+class _CompletedRideDetailsState extends State<CompletedRideDetails> {
   final storage = FlutterSecureStorage();
   List<Future<Map<String, dynamic>>>? _passengerFutures;
   GoogleMapController? _mapController;
@@ -380,6 +379,7 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
                                 ),
                               ),
                               const SizedBox(height: 4),
+                             
                               Text(
                                 'Cost: Rs. ${passenger.cost.toStringAsFixed(2)}',
                                 style: const TextStyle(
@@ -396,71 +396,7 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
                 ),
 
             // Start and Cancel Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                SizedBox(
-                  width: 140,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // Start ride logic
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Start functionality to be implemented',
-                          ),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Start',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 140,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CancellationReasonScreen(ride: widget.ride),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            
             const SizedBox(height: 16),
 
             // Additional Ride Information

@@ -102,7 +102,10 @@ class _VehicleUpdateState extends State<VehicleUpdate> {
             'vehicleRegistrationNumber': _vehicleRegistrationController.text,
             'seatingCapacity': _numberOfSeats,
           };
-          Navigator.pop(context, updatedVehicle);
+          if (mounted) {
+            Navigator.pop(context);
+          }
+
         } else {
           throw Exception('Failed to update vehicle: ${response.body}');
         }
@@ -111,9 +114,12 @@ class _VehicleUpdateState extends State<VehicleUpdate> {
           SnackBar(content: Text('Failed to update vehicle: $e')),
         );
       } finally {
-        setState(() {
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+
       }
     }
   }

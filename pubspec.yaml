@@ -53,6 +53,8 @@ dependencies:
   url_launcher: ^6.3.2
   firebase_core: ^3.15.1
   location: ^8.0.1
+  agora_rtc_engine: ^6.5.2
+  flutter_local_notifications: ^18.0.1
   
 dependency_overrides:
   flutter_keyboard_visibility:
@@ -99,6 +101,8 @@ flutter:
     - assets/anima.webp
     - assets/jeep-icon.png
     - assets/van-icon.png
+    - assets/pin.png
+    - assets/car-d.png
     - themes/
 
   # An image asset can refer to one or more resolution-specific "variants", see

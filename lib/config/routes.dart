@@ -3,6 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/models/RideData.dart';
 import 'package:mobile_frontend/views/auth/awaiting_verification.dart';
+import 'package:mobile_frontend/views/auth/reset_password.dart';
+import 'package:mobile_frontend/views/common/call_screen.dart';
+import 'package:mobile_frontend/views/common/incomming_call.dart';
 import 'package:mobile_frontend/views/common/name_update.dart';
 import 'package:mobile_frontend/views/common/vehicle_update.dart';
 import 'package:mobile_frontend/views/driver/ride_start_screen.dart';
@@ -27,6 +30,20 @@ final Map<String, WidgetBuilder> routes = {
   '/phoneEdit': (context) => PhoneUpdate(),
   '/nameEdit' : (context) => NameUpdateScreen(),
   '/vehicleEdit' : (context) => VehicleUpdate(),
+  '/call': (context) => CallingScreen(
+        channelName: (ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>)['channelName'],
+        token: (ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>)['token'],
+        uid: (ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>)['uid'],
+      ),
+  '/incommingcall': (context) => IncomingCallScreen(
+        channelName: (ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>)['channelName'],
+        token: (ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>)['token'],
+        uid: (ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>)['uid'],
+      ),
+  '/reset-password': (context) {
+      final email = ModalRoute.of(context)?.settings.arguments as String?;
+      return ResetPasswordPage(email: email);
+    },
   // Add the main navigation route
   // '/main': (context) => MainNavigation(),
 };

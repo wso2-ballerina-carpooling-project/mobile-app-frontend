@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/models/RideData.dart';
+import 'package:mobile_frontend/services/call_service.dart';
+import 'package:mobile_frontend/views/common/call_screen.dart';
 import 'package:mobile_frontend/views/driver/ride_start_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+final CallService _callService = CallService();
 
 class RouteCard extends StatelessWidget {
   final String startTime;
@@ -166,14 +171,53 @@ class RouteCard extends StatelessWidget {
                   ),
                   minimumSize: const Size(80, 30),
                 ),
-                onPressed: () {
-                  // Navigate to RideStartScreen with rideId
+                onPressed: () async {
+                //   try {
+                
+
+
+                //  // Use actual current user ID
+                //     final channelName =
+                //         'ride_${ride.rideId}'; // Unique channel per ride
+                //     final response = await CallService.getAgoraToken(
+                //       channelName,
+                //       "1234",
+                //     );
+
+                //     await CallService.sendCallNotification(
+                //       driverId: "1234",
+                //       callId: "1234",
+                //       channelName: channelName,
+                //       callerName: 'Nalaka',
+                //     );
+
+                //     // Send FCM notification to the driver
+                   
+                //     Navigator.push(
+                //       context,
+                //       MaterialPageRoute(
+                //         builder:
+                //             (context) => CallingScreen(
+                //               token: response,
+                //               channelName: channelName,
+                //               uid: 1234, // Display recipient's name
+                //             ),
+                //       ),
+                //     );
+                //   } catch (e) {
+                //     ScaffoldMessenger.of(context).showSnackBar(
+                //       SnackBar(content: Text('Error initiating call: $e')),
+                //     );
+                //   }
+
                   Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DriverRideTracking(ride: ride),
-      ),
-    );
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => DriverRideTracking(ride: ride),
+
+                    ),
+                  );
                 },
                 child: const Text(
                   'Start',

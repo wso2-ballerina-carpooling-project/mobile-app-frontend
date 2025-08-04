@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:mobile_frontend/config/constant.dart';
 import 'package:mobile_frontend/models/RideData.dart';
+import 'package:mobile_frontend/views/driver/completed_ride_details.dart';
 
 class RideCard extends StatefulWidget {
   final Ride ride;
@@ -90,11 +91,14 @@ class _RideCardState extends State<RideCard> {
     final startLocation = widget.ride.pickupLocation;
     final endLocation = widget.ride.dropoffLocation;
     final passengerCount = widget.ride.passengerCount;
+    final totalEarnings = widget.ride.passengers.isNotEmpty
+        ? widget.ride.passengers.map((passenger) => passenger.cost).reduce((a, b) => a + b)
+        : 0.0;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 2.0),
       color: Colors.white,
-      elevation: 4,
+      elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -116,7 +120,7 @@ class _RideCardState extends State<RideCard> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Earn: Rs. 500', // Placeholder earn value
+                  'Earn: Rs.${totalEarnings.toStringAsFixed(2)}', // Placeholder earn value
                   style: TextStyle(fontSize: 16, color: Colors.green[700]),
                 ),
                 Text(
@@ -151,8 +155,11 @@ class _RideCardState extends State<RideCard> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('View More clicked')),
+                   Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CompletedRideDetails(ride: widget.ride),
+                    ),
                   );
                 },
                 style: ElevatedButton.styleFrom(

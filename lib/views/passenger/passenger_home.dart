@@ -368,6 +368,7 @@ class _PassengerHomeState extends State<PassengerHome> {
                                               isRideStarted: ride.status == 'start',
                                               isGoingToWork: ride.waytowork,
                                               onTrackPressed: trackRide,
+                                              ride: ride,
                                             ),
                                           ),
                                         );

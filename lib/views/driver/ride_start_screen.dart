@@ -5,6 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:mobile_frontend/services/call_service.dart';
+import 'package:mobile_frontend/views/common/call_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:mobile_frontend/config/constant.dart';
@@ -19,6 +22,7 @@ class DriverRideTracking extends StatefulWidget {
 }
 
 class _DriverRideTrackingState extends State<DriverRideTracking> {
+  final String currentUserId = '';
   late GoogleMapController mapController;
   Set<Marker> markers = {};
   Set<Polyline> polylines = {};
@@ -32,21 +36,95 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
   String? durationText;
   String? etaText;
   String? passengerName;
+  String fcm = "";
+  String? phone;
   WebSocketChannel? _channel;
   bool _isWebSocketConnected = false;
   Timer? _heartbeatTimer;
   Map<String, dynamic> passengerDetails = {};
   Map<String, String> waypointAddresses = {};
+  BitmapDescriptor? _pinIcon;
+  BitmapDescriptor? _carIcon;
+  LatLng? _previousDriverLocation;
+  bool _isDisposed = false;
 
   @override
   void initState() {
     super.initState();
-    _checkLocationPermission();
-    _initializeWebSocket();
+    _startRide();
+  }
+
+  Future<void> _startRide() async {
+    const String baseUrl =
+        'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
+    final url = Uri.parse('$baseUrl/rides/begin');
+
+    try {
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'rideId': widget.ride.rideId}),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        await _checkLocationPermission();
+        await _loadIcons();
+        await _initializeWebSocket();
+      } else {
+        _showError('Failed to start ride: ${response.statusCode}');
+        setState(() {
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      _showError('Error starting ride: $e');
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _endRide() async {
+    const String baseUrl =
+        'https://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/service-carpool/carpool-service/v1.0';
+    final url = Uri.parse('$baseUrl/rides/end');
+
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'rideId': widget.ride.rideId}),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        if (!_isDisposed) {
+          Navigator.pop(context);
+        }
+      } else {
+        _showError('Failed to end ride: ${response.statusCode}');
+        setState(() {
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      _showError('Error ending ride: $e');
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     locationUpdateTimer?.cancel();
     _closeWebSocket();
     mapController.dispose();
@@ -54,13 +132,15 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    if (!_isDisposed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   Future<void> updateMapTheme(GoogleMapController controller) async {
@@ -82,11 +162,17 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
         _showError('Location permissions are denied');
+        setState(() {
+          isLoading = false;
+        });
         return;
       }
     }
     if (permission == LocationPermission.deniedForever) {
       _showError('Location permissions are permanently denied');
+      setState(() {
+        isLoading = false;
+      });
       return;
     }
     _startLocationUpdates();
@@ -111,6 +197,9 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
       });
     } catch (e) {
       _showError('Error getting location: $e');
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
@@ -192,6 +281,10 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
           passengerDetails[passengerId] = userDetails;
           if (nextPassenger?.passengerId == passengerId) {
             passengerName = userDetails['firstName'] as String? ?? 'Unknown';
+            fcm = userDetails['fcm'] as String;
+            print('passenegerId');
+            print(fcm);
+            phone = userDetails['phone'] as String;
           }
         });
         return userDetails;
@@ -236,13 +329,10 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
 
   Future<void> _fetchDrivingRoute(LatLng origin, LatLng destination) async {
     try {
-      // Fetch passenger details if routing to a passenger
       if (pickedUpPassengers.length < widget.ride.passengers.length &&
           nextPassenger != null) {
         if (passengerDetails[nextPassenger!.passengerId] == null) {
           await _fetchPassengerDetails(nextPassenger!.passengerId);
-        } else {
-          
         }
         if (waypointAddresses[nextPassenger!.passengerId] == null) {
           await _fetchWaypointAddress(
@@ -256,26 +346,21 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
         });
       }
 
-      // Find the closest point on the route polyline to the driver's position
       int startIndex = _findClosestPolylineIndex(origin);
-      // Find the closest point on the route polyline to the destination
       int endIndex = _findClosestPolylineIndex(destination);
 
-      // Ensure startIndex is before endIndex
       if (startIndex > endIndex) {
         int temp = startIndex;
         startIndex = endIndex;
         endIndex = temp;
       }
 
-      // Extract the polyline segment from startIndex to endIndex
       polylineCoordinates.clear();
       polylineCoordinates.addAll(
         widget.ride.route.polyline.sublist(startIndex, endIndex + 1),
       );
       _createPolyline();
 
-      // Fetch real-time distance and duration using Distance Matrix API
       String url =
           'https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origin.latitude},${origin.longitude}&destinations=${destination.latitude},${destination.longitude}&mode=driving&departure_time=now&traffic_model=best_guess&units=metric&key=AIzaSyBJToHkeu0EhfzRM64HXhCg2lil_Kg9pSE';
 
@@ -344,28 +429,36 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
     }
   }
 
+  double _calculateRotation(LatLng start, LatLng end) {
+    double latDiff = end.latitude - start.latitude;
+    double lngDiff = end.longitude - start.longitude;
+    double angle = atan2(lngDiff, latDiff);
+    return angle * 180 / pi;
+  }
+
   void _addDriverMarker(LatLng position) {
     markers.clear();
+    double rotation = 0;
+
+    if (_previousDriverLocation != null) {
+      rotation = _calculateRotation(_previousDriverLocation!, position);
+    }
     markers.add(
       Marker(
         markerId: const MarkerId('driver'),
         position: position,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow),
+        icon: _carIcon!,
+        anchor: const Offset(0.5, 0.5),
+        rotation: rotation,
       ),
     );
-    markers.add(
-      Marker(
-        markerId: const MarkerId('start'),
-        position: widget.ride.route.polyline.first,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-        infoWindow: InfoWindow(title: widget.ride.pickupLocation),
-      ),
-    );
+    _previousDriverLocation = position;
+
     markers.add(
       Marker(
         markerId: const MarkerId('end'),
         position: widget.ride.route.polyline.last,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        icon: _pinIcon!,
         infoWindow: InfoWindow(title: widget.ride.dropoffLocation),
       ),
     );
@@ -378,10 +471,7 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
             icon: BitmapDescriptor.defaultMarkerWithHue(
               BitmapDescriptor.hueBlue,
             ),
-            infoWindow: InfoWindow(
-              title:
-                  waypointAddresses[passenger.passengerId] ?? passenger.address,
-            ),
+            infoWindow: InfoWindow(title: passengerName ?? passenger.address),
           ),
         );
       }
@@ -411,6 +501,27 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
   }
 
   void _confirmPassengerPickup(Passenger passenger) {
+    if (_channel != null && _isWebSocketConnected) {
+      final pickupMessage = {
+        'type': 'passenger_picked_up',
+        'driver_id': widget.ride.driverId,
+        'ride_id': widget.ride.rideId,
+        'passenger_id': passenger.passengerId,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+      try {
+        _channel!.sink.add(jsonEncode(pickupMessage));
+        print(
+          "📤 Sent passenger picked up message: ${jsonEncode(pickupMessage)}",
+        );
+      } catch (e) {
+        _showError('Error sending pickup confirmation: $e');
+        _isWebSocketConnected = false;
+        _attemptReconnection();
+        return;
+      }
+    }
+
     setState(() {
       pickedUpPassengers.add(passenger);
       nextPassenger = _getNearestPassenger(
@@ -430,30 +541,36 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
     try {
       _channel = WebSocketChannel.connect(
         Uri.parse(
-          "wss://6a087cec-06ac-4af3-89fa-e6e37f8ac222-dev.e1-us-east-azure.choreoapis.dev/websocket/websocket/v1.0",
+          "wss://6a087cec-06ac-4af3-89fa-e6e37f8ac222-prod.e1-us-east-azure.choreoapis.dev/websocket/websocket/v1.0",
         ),
       );
+
       _channel!.stream.listen(
         (message) => _handleWebSocketMessage(message),
         onError: (error) {
           _isWebSocketConnected = false;
-          _attemptReconnection();
+          if (!_isDisposed) _attemptReconnection();
         },
         onDone: () {
           _isWebSocketConnected = false;
-          _attemptReconnection();
+          if (!_isDisposed) _attemptReconnection();
         },
       );
-      _sendInitialConnectionMessage();
+
+      _isWebSocketConnected = true;
       _startHeartbeat();
-      setState(() => _isWebSocketConnected = true);
+
+      await Future.delayed(Duration(milliseconds: 300));
+      _sendInitialConnectionMessage();
+
+      setState(() {});
     } catch (e) {
       _isWebSocketConnected = false;
       _attemptReconnection();
     }
   }
 
-  void _sendInitialConnectionMessage() {
+  void _sendInitialConnectionMessage() async {
     if (_channel != null && _isWebSocketConnected) {
       final message = {
         'type': 'driver_connected',
@@ -461,13 +578,18 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
         'ride_id': widget.ride.rideId,
         'timestamp': DateTime.now().toIso8601String(),
       };
+      print("📤 Sending initial connection message: ${jsonEncode(message)}");
       _channel!.sink.add(jsonEncode(message));
+    } else {
+      print(
+        "⚠️ WebSocket not connected, cannot send initial connection message",
+      );
     }
   }
 
   void _startHeartbeat() {
     _heartbeatTimer?.cancel();
-    _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
       if (_channel != null && _isWebSocketConnected) {
         final heartbeat = {
           'type': 'heartbeat',
@@ -490,10 +612,25 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
       switch (data['type']) {
         case 'location_received':
           break;
+        case 'passenger_picked_up_ack':
+          print("✅ Received pickup acknowledgment: ${jsonEncode(data)}");
+          break;
       }
     } catch (e) {
       debugPrint('Error handling WebSocket message: $e');
     }
+  }
+
+  Future<void> _loadIcons() async {
+    const imageConfiguration = ImageConfiguration(size: Size(48, 48));
+    _pinIcon = await BitmapDescriptor.asset(
+      imageConfiguration,
+      'assets/pin.png',
+    );
+    _carIcon = await BitmapDescriptor.asset(
+      imageConfiguration,
+      'assets/car-d.png',
+    );
   }
 
   void _sendLocationUpdate(LatLng location, {double? speed, double? heading}) {
@@ -519,9 +656,9 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
   }
 
   void _attemptReconnection() {
-    if (_isWebSocketConnected) return;
+    if (_isWebSocketConnected || _isDisposed) return;
     Timer(const Duration(seconds: 5), () {
-      if (!_isWebSocketConnected) _initializeWebSocket();
+      if (!_isWebSocketConnected && !_isDisposed) _initializeWebSocket();
     });
   }
 
@@ -581,257 +718,321 @@ class _DriverRideTrackingState extends State<DriverRideTracking> {
                             currentPosition!.longitude,
                           )
                           : widget.ride.route.polyline.first,
-                  zoom: 12,
+                  zoom: 14.0,
                 ),
                 markers: markers,
                 polylines: polylines,
                 myLocationEnabled: true,
               ),
           Positioned(
-            bottom: nextPassenger != null ? 90 : 20,
+            bottom: 16,
             left: 16,
             right: 16,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                // Modern gradient background
-                gradient: LinearGradient(
-                  colors: [Colors.grey[900]!, Colors.black87],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                    spreadRadius: 0,
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.grey[900]!, Colors.black87],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                        spreadRadius: 0,
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  // Left side - Main content
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Destination with icon
-                        Row(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              Icons.location_on,
-                              color: Colors.blue[400],
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                nextPassenger != null
-                                    ? 'To: ${waypointAddresses[nextPassenger!.passengerId] ?? nextPassenger!.address}'
-                                    : 'To: ${widget.ride.dropoffLocation}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  fontSize: 16,
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.location_on,
+                                  color: Colors.blue[400],
+                                  size: 20,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    nextPassenger != null
+                                        ? 'To: ${waypointAddresses[nextPassenger!.passengerId] ?? nextPassenger!.address}'
+                                        : 'To: ${widget.ride.dropoffLocation}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (passengerName != null) ...[
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.person,
+                                    color: Colors.green[400],
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Passenger: $passengerName',
+                                      style: TextStyle(
+                                        color: Colors.grey[300],
+                                        fontSize: 14,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.grey[700]!,
+                                  width: 0.5,
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  _buildInfoRow(
+                                    Icons.straighten,
+                                    'Distance',
+                                    distanceText ?? "Calculating...",
+                                    Colors.orange[400]!,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildInfoRow(
+                                    Icons.schedule,
+                                    'Duration',
+                                    durationText ?? "Calculating...",
+                                    Colors.purple[400]!,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildInfoRow(
+                                    Icons.access_time,
+                                    'ETA',
+                                    etaText ?? "Calculating...",
+                                    Colors.blue[400]!,
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-
-                        // Passenger info
-                        if (passengerName != null) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.person,
-                                color: Colors.green[400],
-                                size: 18,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Passenger: $passengerName',
-                                  style: TextStyle(
-                                    color: Colors.grey[300],
-                                    fontSize: 14,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-
-                        const SizedBox(height: 12),
-
-                        // Trip details in a more organized way
+                      ),
+                      if (nextPassenger != null) ...[
+                        const SizedBox(width: 16),
                         Container(
-                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Colors.green[600],
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.grey[700]!,
-                              width: 0.5,
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              _buildInfoRow(
-                                Icons.straighten,
-                                'Distance',
-                                distanceText ?? "Calculating...",
-                                Colors.orange[400]!,
-                              ),
-                              const SizedBox(height: 8),
-                              _buildInfoRow(
-                                Icons.schedule,
-                                'Duration',
-                                durationText ?? "Calculating...",
-                                Colors.purple[400]!,
-                              ),
-                              const SizedBox(height: 8),
-                              _buildInfoRow(
-                                Icons.access_time,
-                                'ETA',
-                                etaText ?? "Calculating...",
-                                Colors.blue[400]!,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.green.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
                               ),
                             ],
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.call, color: Colors.white),
+                            onPressed: () async {
+                              _closeWebSocket();
+                              try {
+                                final callId =
+                                    "1234"; // Use current user ID
+                                final channelName =
+                                    'ride_${widget.ride.rideId}'; // Unique channel per ride
+                                final response =
+                                    await CallService.getAgoraToken(
+                                      channelName,
+                                      callId,
+                                    );
+                                final prefs = await SharedPreferences.getInstance();
+                                final driverName = prefs.getString('firstName') ?? 'Driver';
+
+                                await CallService.sendCallNotification(
+                                  driverId: "1234",
+                                  callId: callId,
+                                  channelName: channelName,
+                                  callerName: driverName,
+                                  passengerId: fcm
+                                );
+
+                                // Send FCM notification to the driver
+
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => CallingScreen(
+                                          uid: 1234,
+                                          token: response,
+                                          channelName: channelName,
+                                          contactName: passengerName,
+                                          // Display recipient's name
+                                        ),
+                                  ),
+                                );
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Error initiating call: $e'),
+                                  ),
+                                );
+                              }
+                            },
+                            tooltip: 'Call Passenger',
                           ),
                         ),
                       ],
-                    ),
-                  ),
-
-                  // Right side - Call button
-                  if (nextPassenger != null) ...[
-                    const SizedBox(width: 16),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.green[600],
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.green.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.call, color: Colors.white),
-                        onPressed: () {
-                          // Add your call functionality here
-                          // For now, it's null as in your original code
-                        },
-                        tooltip: 'Call Passenger',
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-
-          // Enhanced pickup confirmation button
-          if (nextPassenger != null)
-            Positioned(
-              bottom: 20,
-              left: 16,
-              right: 16,
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.blue.withOpacity(0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: ElevatedButton(
-                  onPressed: () => _confirmPassengerPickup(nextPassenger!),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[600],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.check_circle, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Confirm Pickup: ${passengerName}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
                     ],
                   ),
                 ),
-              ),
+                const SizedBox(height: 8), // Space between box and button
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blue.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child:
+                      nextPassenger != null
+                          ? ElevatedButton(
+                            onPressed:
+                                () => _confirmPassengerPickup(nextPassenger!),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue[600],
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.check_circle, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Confirm Pickup: ${passengerName ?? "Passenger"}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                          : ElevatedButton(
+                            onPressed: _endRide,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue[600],
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.check_circle, size: 20),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'End Trip',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                ),
+              ],
             ),
+          ),
         ],
       ),
     );
   }
-}
 
-Widget _buildInfoRow(IconData icon, String label, String value, Color iconColor) {
-  return Row(
-    children: [
-      Icon(
-        icon,
-        color: iconColor,
-        size: 16,
-      ),
-      const SizedBox(width: 8),
-      Text(
-        '$label: ',
-        style: TextStyle(
-          color: Colors.grey[400],
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      Expanded(
-        child: Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
+  Widget _buildInfoRow(
+    IconData icon,
+    String label,
+    String value,
+    Color iconColor,
+  ) {
+    return Row(
+      children: [
+        Icon(icon, color: iconColor, size: 16),
+        const SizedBox(width: 8),
+        Text(
+          '$label: ',
+          style: TextStyle(
+            color: Colors.grey[400],
             fontSize: 13,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
           ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
         ),
-      ),
-    ],
-  );
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
 }
